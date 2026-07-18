@@ -1,0 +1,16 @@
+{
+  "name": "SyncState — Binaural Consciousness Studio",
+  "short_name": "SyncState",
+  "description": "Binaural beat brainwave entrainment based on US Patent 5,356,368.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0e1a",
+  "theme_color": "#0b0e1a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%230b0e1a'/%3E%3Cpath d='M20 96 Q48 40 76 96 T132 96 T188 96' stroke='%237c6cf0' stroke-width='10' fill='none' stroke-linecap='round'/%3E%3Cpath d='M4 96 Q32 152 60 96 T116 96 T172 96' stroke='%233ecfae' stroke-width='10' fill='none' stroke-linecap='round' opacity='0.8'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
