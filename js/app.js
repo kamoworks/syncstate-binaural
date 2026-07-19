@@ -11,19 +11,35 @@ let viz = null;
 
 /* ---------- presets (Mood Minder embodiment) ---------- */
 const PRESETS = [
-  { id: 'deep-sleep', name: 'Deep Sleep', beat: 2,   carrier: 120, noise: 0.22, icon: '🌙',
+  { id: 'deep-sleep', name: 'Deep Sleep', beat: 2,   carrier: 120, noise: 0.22,
     desc: 'Delta 2 Hz — deep restorative sleep and healing.' },
-  { id: 'meditation', name: 'Meditation', beat: 6,   carrier: 160, noise: 0.18, icon: '🧘',
+  { id: 'meditation', name: 'Meditation', beat: 6,   carrier: 160, noise: 0.18,
     desc: 'Theta 6 Hz — deep meditation, imagery, creativity.' },
-  { id: 'relaxation', name: 'Relaxation', beat: 10,  carrier: 200, noise: 0.15, icon: '🌿',
+  { id: 'relaxation', name: 'Relaxation', beat: 10,  carrier: 200, noise: 0.15,
     desc: 'Alpha 10 Hz — calm, stress release, relaxed alertness.' },
-  { id: 'focus', name: 'Focus', beat: 16, carrier: 240, noise: 0.12, icon: '🎯',
+  { id: 'focus', name: 'Focus', beat: 16, carrier: 240, noise: 0.12,
     desc: 'Beta 16 Hz — sustained attention and problem-solving.' },
-  { id: 'peak', name: 'Peak Awareness', beat: 40, carrier: 300, noise: 0.08, icon: '⚡',
+  { id: 'peak', name: 'Peak Awareness', beat: 40, carrier: 300, noise: 0.08,
     desc: 'Gamma 40 Hz — high-level cognition and integration.' },
-  { id: 'concentrate', name: 'Concentration', beat: 12, carrier: 220, noise: 0.14, septon: true, icon: '📚',
+  { id: 'concentrate', name: 'Concentration', beat: 12, carrier: 220, noise: 0.14, septon: true,
     desc: 'SMR 12 Hz + Theta septon — study and learning mix.' }
 ];
+
+/* waveform glyph: each preset gets its beat drawn as a wave —
+ * slow wide sine for Delta, dense tight sine for Gamma. */
+function waveGlyph(beat) {
+  const band = bandFor(beat);
+  const cycles = 0.8 + Math.log2(Math.max(1, beat)) * 0.55;
+  const W = 44, H = 30, mid = H / 2, amp = H * 0.32;
+  let pts = '';
+  for (let x = 0; x <= W; x += 1) {
+    const y = mid + Math.sin((x / W) * Math.PI * 2 * cycles) * amp;
+    pts += `${x},${y.toFixed(1)} `;
+  }
+  return `<svg class="preset-glyph" viewBox="0 0 ${W} ${H}" fill="none">
+    <polyline points="${pts}" stroke="${band.color}" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`;
+}
 
 /* ---------- Sleep Processor program (patent primary embodiment) ----------
  * Natural ~90-minute cycles: Alpha descent -> Theta -> Delta -> Theta(REM) */
@@ -48,6 +64,7 @@ function buildSleepProgram(cycles = 4, wakeUp = true) {
 const app = {
   playing: false,
   sessionMin: 20,
+  sessionTotal: 0,
   activePreset: null,
   program: null,
   programStage: null
@@ -87,6 +104,7 @@ async function togglePlay() {
     if (app.program) {
       // program already scheduled on start
     } else {
+      app.sessionTotal = app.sessionMin * 60;
       engine.startSessionTimer(app.sessionMin);
     }
     viz && viz.start();
@@ -124,9 +142,12 @@ function updateStageUI(stage) {
 }
 
 /* ---------- engine callbacks ---------- */
+const DIAL_C = 2 * Math.PI * 78; // dial ring circumference
 engine.onTick = remain => {
   const m = Math.floor(remain / 60), s = remain % 60;
   $('#timerReadout').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const prog = app.sessionTotal ? 1 - remain / app.sessionTotal : 0;
+  $('#dialProg').style.strokeDashoffset = DIAL_C * (1 - prog);
 };
 engine.onEnded = () => {
   app.playing = false;
@@ -199,7 +220,10 @@ function initControls() {
       $$('.time-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       app.sessionMin = parseInt(chip.dataset.min);
-      if (app.playing && !app.program) engine.startSessionTimer(app.sessionMin);
+      if (app.playing && !app.program) {
+        app.sessionTotal = app.sessionMin * 60;
+        engine.startSessionTimer(app.sessionMin);
+      }
       saveSettings();
     });
   });
@@ -236,6 +260,8 @@ function refreshControlValues() {
 
 function updateBandReadout(beat) {
   const band = bandFor(beat);
+  // dynamic state tinting — Session & Visualize follow the band color
+  document.documentElement.style.setProperty('--state', band.color);
   $('#bandName').textContent = band.name;
   $('#bandName').style.color = band.color;
   $('#bandLabel').textContent = band.label;
@@ -254,7 +280,7 @@ function renderPresets() {
     const el = document.createElement('button');
     el.className = 'preset-card';
     el.innerHTML = `
-      <span class="preset-icon">${p.icon}</span>
+      ${waveGlyph(p.beat)}
       <span class="preset-body">
         <span class="preset-name">${p.name}</span>
         <span class="preset-desc">${p.desc}</span>
@@ -282,7 +308,10 @@ function applyPreset(p, el) {
   $('#bandChip').style.color = band.color;
   // auto-start for seamless UX
   if (!app.playing) togglePlay();
-  else if (!app.program) engine.startSessionTimer(app.sessionMin);
+  else if (!app.program) {
+    app.sessionTotal = app.sessionMin * 60;
+    engine.startSessionTimer(app.sessionMin);
+  }
 }
 
 /* ---------- sleep program UI ---------- */
@@ -299,6 +328,7 @@ function initSleepUI() {
       viz && viz.start();
       updatePlayUI();
     }
+    app.sessionTotal = stages.reduce((a, s) => a + s.minutes * 60, 0);
     engine.runProgram(stages);
     showTab('session');
   });
@@ -356,6 +386,11 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#bandChip').textContent = band.name + ' · ' + engine.state.beat + ' Hz';
   $('#bandChip').style.background = band.color + '33';
   $('#bandChip').style.color = band.color;
+
+  // dial ring init
+  const dial = $('#dialProg');
+  dial.style.strokeDasharray = DIAL_C;
+  dial.style.strokeDashoffset = DIAL_C;
 
   updatePlayUI();
 });
