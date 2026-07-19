@@ -1,1 +1,326 @@
-<html>PLACEHOLDER</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>SyncState — Binaural Consciousness Studio</title>
+<meta name="description" content="Binaural beat brainwave entrainment app based on US Patent 5,356,368. Delta, Theta, Alpha, Beta, Gamma states with sleep-cycle programs.">
+<!-- iPhone / PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SyncState">
+<meta name="theme-color" content="#0b0e1a">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">Sync<span>State</span></div>
+    <div class="header-right">
+      <div id="bandChip">Alpha · 10 Hz</div>
+      <button id="helpBtn" aria-label="Help and tour">?</button>
+    </div>
+  </header>
+
+  <!-- ============ SESSION TAB ============ -->
+  <section class="tab-panel active" id="tab-session">
+    <div class="stage">
+      <div class="dial-wrap">
+        <svg class="dial" viewBox="0 0 168 168">
+          <circle class="dial-track" cx="84" cy="84" r="78"/>
+          <circle class="dial-prog" id="dialProg" cx="84" cy="84" r="78"/>
+        </svg>
+        <button id="playBtn" aria-label="Play or pause">
+          <svg viewBox="0 0 24 24" width="34" height="34"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10.2-6.5a1 1 0 0 0 0-1.7L9.53 4.65A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div id="nowPlaying">Ready</div>
+      <div id="timerReadout">--:--</div>
+      <div class="band-readout">
+        <span id="bandName">Alpha</span>
+        <span id="bandLabel">Relaxation · Calm Focus</span>
+      </div>
+      <div class="band-dots">
+        <span class="band-dot" data-band="Delta"></span>
+        <span class="band-dot" data-band="Theta"></span>
+        <span class="band-dot" data-band="Alpha"></span>
+        <span class="band-dot" data-band="Beta"></span>
+        <span class="band-dot" data-band="Gamma"></span>
+      </div>
+    </div>
+
+    <div class="time-chips">
+      <button class="time-chip" data-min="10">10m</button>
+      <button class="time-chip active" data-min="20">20m</button>
+      <button class="time-chip" data-min="30">30m</button>
+      <button class="time-chip" data-min="45">45m</button>
+      <button class="time-chip" data-min="60">60m</button>
+      <button class="info-btn" data-info="timer" aria-label="Timer info">i</button>
+    </div>
+    <p class="hp-hint">STEREO HEADPHONES REQUIRED <button class="info-btn" data-info="headphones" aria-label="Why headphones">i</button></p>
+
+    <div class="card">
+      <h3>Frequency Calibration</h3>
+      <div class="ctl">
+        <div class="ctl-head"><label>Beat Frequency <button class="info-btn" data-info="beat" aria-label="Beat frequency info">i</button></label><span id="beatSliderVal">10 Hz</span></div>
+        <input type="range" id="beatSlider" min="-0.3" max="1.65" step="0.005" value="1">
+        <div class="beat-zones"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Carrier Tone <button class="info-btn" data-info="carrier" aria-label="Carrier tone info">i</button></label><span id="carrierSliderVal">200 Hz</span></div>
+        <input type="range" id="carrierSlider" min="80" max="500" step="1" value="200">
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">Septōn Signal <button class="info-btn" data-info="septon" aria-label="Septon info">i</button></div>
+          <div class="t-sub">Simultaneous binaural + monaural beats (patent multi-beat mode)</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="septonToggle"><span class="track"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Focus Tone · Fm Theta <button class="info-btn" data-info="fm" aria-label="Focus tone info">i</button></h3>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">Masaki Focus Tone</div>
+          <div class="t-sub">AM theta stimulus (US 5,954,630) — works on speakers too</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="fmToggle"><span class="track"></span></label>
+      </div>
+      <div class="ctl" style="margin-top:12px">
+        <div class="ctl-head"><label>Modulation Rate</label><span id="fmRateVal">6.5 Hz</span></div>
+        <input type="range" id="fmRateSlider" min="2" max="10" step="0.1" value="6.5">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Modulation Depth</label><span id="fmDepthVal">80%</span></div>
+        <input type="range" id="fmDepthSlider" min="0.3" max="1" step="0.01" value="0.8">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Carrier Tone</label><span id="fmCarrierVal">150 Hz</span></div>
+        <input type="range" id="fmCarrierSlider" min="120" max="200" step="1" value="150">
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">1/f Fluctuation <button class="info-btn" data-info="onef" aria-label="1/f fluctuation info">i</button></div>
+          <div class="t-sub">Organic bio-rhythm variation — augments induction</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="onefToggle"><span class="track"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Mix</h3>
+      <div class="ctl">
+        <div class="ctl-head"><label>Master Volume <button class="info-btn" data-info="volume" aria-label="Volume info">i</button></label><span id="volumeSliderVal">60%</span></div>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.6">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Tone Level <button class="info-btn" data-info="tone" aria-label="Tone level info">i</button></label><span id="toneSliderVal">80%</span></div>
+        <input type="range" id="toneSlider" min="0" max="1" step="0.01" value="0.8">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Pink Noise Bed <button class="info-btn" data-info="noise" aria-label="Pink noise info">i</button></label><span id="noiseSliderVal">15%</span></div>
+        <input type="range" id="noiseSlider" min="0" max="1" step="0.01" value="0.15">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Ear Balance <button class="info-btn" data-info="balance" aria-label="Ear balance info">i</button></label><span id="balanceSliderVal">0%</span></div>
+        <input type="range" id="balanceSlider" min="-1" max="1" step="0.01" value="0">
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATES TAB ============ -->
+  <section class="tab-panel" id="tab-states">
+    <div class="section-head">
+      <h2>Choose Your State</h2>
+      <button class="info-btn" data-info="presets" aria-label="Presets info">i</button>
+    </div>
+    <div id="presetList"></div>
+    <div class="card">
+      <h3>How to use</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">
+        Wear stereo headphones — binaural beats require a separate tone in each ear.
+        Pick a state, close your eyes, and let the Frequency Following Response do the rest.
+        Effects build over 6–10 minutes.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ SLEEP TAB ============ -->
+  <section class="tab-panel" id="tab-sleep">
+    <div class="sleep-hero">
+      <svg viewBox="0 0 48 48" fill="none" stroke="#8b7cf6" stroke-width="1.5" stroke-linecap="round">
+        <path d="M38 28A16 16 0 1 1 20 10a13 13 0 0 0 18 18z"/>
+        <path d="M36 8l1 2.5L39.5 11 37 12l-1 2.5L35 12l-2.5-1L35 10.5z" fill="#8b7cf6" stroke="none" opacity="0.7"/>
+      </svg>
+      <p>The <b style="color:var(--text)">Sleep Processor</b> guides your brainwaves through
+      natural 90-minute cycles — Alpha descent, Theta light sleep, Delta deep sleep,
+      Theta REM — then gently wakes you. <button class="info-btn" data-info="sleep" aria-label="Sleep program info">i</button></p>
+    </div>
+
+    <div class="card">
+      <h3>Program</h3>
+      <div class="ctl">
+        <div class="ctl-head"><label>Sleep Cycles (~90 min each)</label></div>
+        <select id="cycleSelect">
+          <option value="1">1 cycle — power nap</option>
+          <option value="3">3 cycles — short night</option>
+          <option value="4" selected>4 cycles — ~6 hours</option>
+          <option value="5">5 cycles — full night</option>
+          <option value="6">6 cycles — extended rest</option>
+        </select>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">Wake-Up Sequence</div>
+          <div class="t-sub">Gradual Theta → Alpha → Beta ramp at the end</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="wakeToggle" checked><span class="track"></span></label>
+      </div>
+    </div>
+
+    <div id="sleepDuration"></div>
+    <button class="cta" id="startSleep">Begin Sleep Program</button>
+
+    <div class="card">
+      <h3>Cycle map</h3>
+      <div class="cycle-diagram">
+        <div class="cycle-seg" style="background:#3ecfae;flex:0.5"></div>
+        <div class="cycle-seg" style="background:#4f9cf0;flex:1"></div>
+        <div class="cycle-seg" style="background:#7c6cf0;flex:2.5"></div>
+        <div class="cycle-seg" style="background:#4f9cf0;flex:1.2"></div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px">
+        Alpha → Theta → Delta (deep) → Theta (REM), repeating — matching natural sleep architecture.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ AFFIRM TAB ============ -->
+  <section class="tab-panel" id="tab-affirm">
+    <div class="section-head">
+      <h2>Affirmations</h2>
+      <button class="info-btn" data-info="affirm" aria-label="Affirmations info">i</button>
+    </div>
+
+    <div class="card">
+      <h3>Subliminal Channel <button class="info-btn" data-info="liminal" aria-label="How masking works">i</button></h3>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">Enable Affirmations</div>
+          <div class="t-sub">Masked dynamically under your mix (US 5,245,666)</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="affToggle"><span class="track"></span></label>
+      </div>
+      <div class="ctl" style="margin-top:12px">
+        <div class="ctl-head"><label>Delivery Level</label><span id="affRatioVal">Subliminal</span></div>
+        <input type="range" id="affRatioSlider" min="0.02" max="0.4" step="0.01" value="0.12">
+      </div>
+      <div class="meters">
+        <div class="meter-row"><span>Cover</span><div class="meter"><div class="meter-fill cover" id="coverMeter"></div></div></div>
+        <div class="meter-row"><span>Message</span><div class="meter"><div class="meter-fill msg" id="msgMeter"></div></div></div>
+      </div>
+      <p id="affStatus" class="aff-status">Pick a library affirmation or record your own</p>
+    </div>
+
+    <div class="card">
+      <h3>Record Your Voice <button class="info-btn" data-info="record" aria-label="Recording info">i</button></h3>
+      <div class="rec-row">
+        <button id="affRecord" class="rec-btn" aria-label="Record affirmation">●</button>
+        <p class="rec-hint">Tap to record a short personal affirmation — it loops, masked, just like the patent's pocket device.</p>
+      </div>
+    </div>
+
+    <div class="card" style="padding-bottom:6px">
+      <h3>Library — full text always shown</h3>
+      <div id="affList"></div>
+    </div>
+  </section>
+
+  <!-- ============ VISUALIZER TAB ============ -->
+  <section class="tab-panel" id="tab-visual">
+    <canvas id="vizCanvas"></canvas>
+    <div class="viz-legend">
+      <span><i style="background:#8ab4ff"></i> Left ear</span>
+      <span><i style="background:#f0a6c0"></i> Right ear</span>
+      <span><i style="background:#7c6cf0"></i> Beat envelope</span>
+      <span><button class="info-btn" data-info="visual" aria-label="Visualizer info">i</button></span>
+    </div>
+    <div class="card">
+      <h3>What you're seeing</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">
+        The two waves are the slightly detuned tones delivered to each ear. Where they drift in and out
+        of phase, your brainstem constructs the phantom <b style="color:var(--text)">binaural beat</b> —
+        shown as the envelope. Below, the live spectrum and the band marker show where your
+        current beat sits across Delta → Gamma.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT TAB ============ -->
+  <section class="tab-panel about" id="tab-about">
+    <h4>The science</h4>
+    <p>SyncState implements the audio methods of US Patent 5,356,368 — Robert A. Monroe's
+    "Method of and Apparatus for Inducing Desired States of Consciousness" (1994, now expired
+    and in the public domain). Two pure tones, slightly different in each ear, cause the brain's
+    Frequency Following Response to synchronize neural activity to the difference frequency —
+    the binaural beat — encouraging hemispheric synchronization ("Hemi-Sync").</p>
+    <h4>Brainwave states</h4>
+    <ul>
+      <li><b>Delta</b> 0.5–4 Hz — deep sleep, healing</li>
+      <li><b>Theta</b> 4–8 Hz — meditation, hypnagogia, creativity</li>
+      <li><b>Alpha</b> 8–13 Hz — relaxation, calm alertness</li>
+      <li><b>Beta</b> 13–30 Hz — focus, problem-solving</li>
+      <li><b>Gamma</b> 30–45 Hz — peak cognition</li>
+    </ul>
+    <h4>Patent features implemented</h4>
+    <ul>
+      <li>Binaural FFR stimulus pairs with adjustable carrier</li>
+      <li>Septōn multi-beat mode (binaural + monaural + harmonic)</li>
+      <li>Phased pink-noise masking bed</li>
+      <li>Sleep Processor: staged 90-minute cycles + wake-up ramp</li>
+      <li>Mood Minder: one-tap state presets</li>
+    </ul>
+    <div class="patent">
+      US 5,356,368 · R. A. Monroe · filed 1991, issued 1994 · expired — public domain.
+      Binaural beats discovered by H. W. Dove, 1839.
+    </div>
+    <p class="warn">⚠ Use stereo headphones. Never use while driving or operating machinery.
+    Not a medical device — consult a professional for clinical conditions. If you have epilepsy
+    or a seizure disorder, consult your physician before use.</p>
+  </section>
+
+</div>
+
+<nav id="tabbar">
+  <button class="tab-btn active" data-tab="session">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M3 12h2l2-6 3 12 3-9 2 3h6"/></svg>
+    Session</button>
+  <button class="tab-btn" data-tab="states">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 5a7 7 0 0 1 7 7M12 2a10 10 0 0 1 10 10M12 19a7 7 0 0 1-7-7M12 22A10 10 0 0 1 2 12"/></svg>
+    States</button>
+  <button class="tab-btn" data-tab="sleep">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 13.5A8 8 0 1 1 10.5 5 6.5 6.5 0 0 0 19 13.5z"/></svg>
+    Sleep</button>
+  <button class="tab-btn" data-tab="affirm">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 0-14.9 4L4 20l4.2-1.1A8 8 0 0 0 20 12z"/><path d="M8 12h1.5l1-2.5 1.5 5 1.5-4 1 1.5H16"/></svg>
+    Affirm</button>
+  <button class="tab-btn" data-tab="visual">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M4 18v-4M8 18V8M12 18V4M16 18v-6M20 18v-3"/></svg>
+    Visualize</button>
+  <button class="tab-btn" data-tab="about">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>
+    About</button>
+</nav>
+
+<script src="js/audio-engine.js"></script>
+<script src="js/visualizer.js"></script>
+<script src="js/help.js"></script>
+<script src="js/affirmations.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

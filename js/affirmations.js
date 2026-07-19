@@ -16,13 +16,13 @@ async function fetchB64(url) {
 }
 
 const AFFIRM_LIBRARY = [
-  { id: 'calm', name: 'Calm', icon: '🌿', file: 'assets/affirmations/calm.b64',
+  { id: 'calm', name: 'Calm', glyphBeat: 10, file: 'assets/affirmations/calm.b64',
     text: '“I am calm and relaxed. My mind is clear, and at peace. I breathe deeply, and let go.”' },
-  { id: 'focus', name: 'Focus', icon: '🎯', file: 'assets/affirmations/focus.b64',
+  { id: 'focus', name: 'Focus', glyphBeat: 16, file: 'assets/affirmations/focus.b64',
     text: '“I am focused and attentive. My concentration is sharp and steady. I work with clarity and purpose.”' },
-  { id: 'confidence', name: 'Confidence', icon: '💪', file: 'assets/affirmations/confidence.b64',
+  { id: 'confidence', name: 'Confidence', glyphBeat: 12, file: 'assets/affirmations/confidence.b64',
     text: '“I am confident and capable. I trust myself completely. I handle challenges with strength and ease.”' },
-  { id: 'sleep', name: 'Sleep', icon: '🌙', file: 'assets/affirmations/sleep.b64',
+  { id: 'sleep', name: 'Sleep', glyphBeat: 2, file: 'assets/affirmations/sleep.b64',
     text: '“I release the day. My body grows heavy and calm. I drift easily into deep, restful sleep.”' }
 ];
 
@@ -43,7 +43,7 @@ function affirmInit(engine, $, $$) {
     el.className = 'preset-card aff-card';
     el.dataset.aff = a.id;
     el.innerHTML = `
-      <span class="preset-icon">${a.icon}</span>
+      ${waveGlyph(a.glyphBeat)}
       <span class="preset-body">
         <span class="preset-name">${a.name}</span>
         <span class="preset-desc aff-text">${a.text}</span>
@@ -53,7 +53,7 @@ function affirmInit(engine, $, $$) {
       updateAffStatus('Loading…');
       const ab = await fetchB64(a.file).catch(() => null);
       const ok = ab ? await engine.loadAffirmation(ab) : false;
-      if (!ok) { updateAffStatus('Could not load — check connection'); return; }
+      if (!ok) return;
       affirm.activeId = a.id;
       $$('.aff-card').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
