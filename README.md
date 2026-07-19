@@ -1,65 +1,67 @@
 # SyncState — Binaural Consciousness Studio
 
-A mobile-first (iPhone-optimized) web app for inducing desired states of consciousness with
-binaural beats, implementing the audio methods of **US Patent 5,356,368** — Robert A. Monroe's
-*"Method of and Apparatus for Inducing Desired States of Consciousness"* (1994, expired, public domain).
+A mobile-first (iPhone-optimized) web app for inducing desired states of consciousness,
+implementing **three expired, public-domain US patents** as one layered audio system:
+
+| Patent | Inventor | Layer |
+|---|---|---|
+| **US 5,356,368** (1994) | Monroe | Binaural FFR entrainment, Septōn, Sleep Processor |
+| **US 5,954,630** (1999) | Masaki/Hayashibara | Fm theta AM focus tone + 1/f fluctuation |
+| **US 5,245,666** (1993) | Mikell | Dynamically masked subliminal affirmations |
 
 ## Run it
 
-It's a fully static app — no build step:
+Fully static — no build step:
 
-- Open `index.html` from any static web server (audio requires http(s) or localhost on some browsers).
-- On iPhone: open the hosted URL in Safari → Share → **Add to Home Screen** for full-screen app mode.
-- **Stereo headphones are required** — binaural beats need a separate tone in each ear.
+- **Live:** https://kamoworks.github.io/syncstate-binaural/
+- On iPhone: open in Safari → Share → **Add to Home Screen** for full-screen app mode.
+- **Stereo headphones required for binaural beats.** The Masaki Focus Tone works on speakers.
 
 ## Features
 
-### Audio engine (patent-faithful)
-- **Binaural FFR pairs** — two detuned sine oscillators routed hard left/right via `ChannelMergerNode`; the brain constructs the phantom beat at the difference frequency (e.g. 200 Hz L / 204 Hz R → 4 Hz beat).
-- **Septōn multi-beat mode** — simultaneous binaural beat + harmonic binaural pair (2×) + monaural amplitude modulation within each ear, per the patent's multi-signal "Septon" concept.
-- **Phased pink-noise bed** — decorrelated stereo pink noise (Paul Kellet filter) for masking, per the patent's pink-sound layer.
-- **Smooth glides** — all frequency transitions use scheduled linear ramps; gain uses setTargetAtTime smoothing (no clicks).
+### Layer 1 — Binaural engine (US 5,356,368)
+- Detuned sine pairs routed hard left/right; brain constructs the phantom beat
+- **Septōn mode**: binaural + harmonic (2×) pair + monaural AM per ear
+- **Phased pink-noise bed** (decorrelated stereo, Paul Kellet filter)
+- **Sleep Processor**: 90-min cycles (Alpha→Theta→Delta→REM), wake-up ramp, 1–6 cycles
+- **Mood Minder presets**: Deep Sleep, Meditation, Relaxation, Concentration, Focus, Peak Awareness
 
-### States (Mood Minder embodiment)
-One-tap presets: Deep Sleep (Delta 2 Hz), Meditation (Theta 6 Hz), Relaxation (Alpha 10 Hz),
-Concentration (SMR 12 Hz + septon), Focus (Beta 16 Hz), Peak Awareness (Gamma 40 Hz).
+### Layer 2 — Masaki Focus Tone (US 5,954,630)
+- 120–200 Hz carrier (150 Hz optimum) amplitude-modulated at **2–10 Hz** (6.5 Hz Fm theta sweet spot)
+- Depth 30–100% (**80% = tested optimum**)
+- **1/f fluctuation**: organic bio-rhythm wander of rate/depth — augments induction
+- Works through speakers — desk/study mode without headphones
 
-### Sleep Processor (primary patent embodiment)
-Programmable 90-minute sleep-cycle program: Alpha descent → Theta → Delta deep sleep →
-Theta REM, repeating, plus an optional wake-up ramp (Theta → Alpha → Beta). 1–6 cycles.
+### Layer 3 — Affirmations (US 5,245,666)
+- **Voice recording** on-device (MediaRecorder → loop) — the patent's primary mode
+- **Transparent library** (Calm, Focus, Confidence, Sleep) — full text always shown
+- **Dynamic masking engine**: envelope follower on the cover mix, 20 ms attack,
+  adaptive 60–150 ms release exploiting **post-masking**; message tracks the cover
+  so it stays at the edge of hearing
+- **Liminal calibration slider** + live cover/message meters
 
-### Calibration controls
-- Beat frequency (log-scale slider, 0.5–45 Hz) with live band readout
-- Carrier tone (80–500 Hz)
-- Master volume, tone level, pink-noise level, ear balance
-- Session timer (10–60 min) with automatic fade-out
-- Settings persisted in localStorage
-
-### Visualization
-Canvas renderer showing the left/right ear waveforms, the perceived beat envelope,
-a live spectrum (from the Web Audio analyser), and a log-scale Delta→Gamma band marker.
-
-## iOS notes
-- `AudioContext` is created/resumed inside user gestures (required by Safari autoplay policy).
-- Resumes automatically when returning from background.
-- Safe-area insets, `apple-mobile-web-app-capable`, and no-overscroll are handled.
-
-## Safety
-Never use while driving. Not a medical device. If you have epilepsy or a seizure disorder,
-consult a physician first.
-
-## Tech
-Vanilla JS + Web Audio API + Canvas. No dependencies, no build step.
+### UX
+- Guided first-run tour with spotlights (replay anytime via the **?** button)
+- 17 contextual info popups (bottom sheets) on every control
+- Session timer with auto fade-out, settings persistence, PWA installable
 
 ## Files
 ```
-index.html          app shell + all screens
-css/style.css       mobile-first dark UI
-js/audio-engine.js  binaural/septon/noise engine + programs
-js/visualizer.js    waveform + spectrum + band visualization
-js/app.js           UI logic, presets, sleep program
-manifest.json       PWA manifest
+index.html                    app shell + all screens
+css/style.css                 mobile-first dark UI
+js/audio-engine.js            3-patent audio engine (binaural, FM-AM, masking)
+js/visualizer.js              waveform + spectrum + band visualization
+js/app.js                     UI logic, presets, sleep program, focus controls
+js/affirmations.js            recording, library, masking meters
+js/help.js                    guided tour + info popups
+assets/affirmations/*.b64     affirmation loops (base64, decoded on-device)
+manifest.json                 PWA manifest
 ```
 
-Patent: US 5,356,368 · R. A. Monroe · filed 1991, issued 1994 · expired — public domain.
+## Safety
+Never use while driving. Not a medical device. If you have epilepsy or a seizure
+disorder, consult a physician first. Affirmations are a mindfulness/self-suggestion
+tool — the app makes no hidden-messaging claims and always shows full text.
+
+Patents: US 5,356,368 · US 5,954,630 · US 5,245,666 — all expired, public domain.
 Binaural beats discovered by Heinrich Wilhelm Dove, 1839.
