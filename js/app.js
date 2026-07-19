@@ -303,6 +303,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initIOS();
   refreshControlValues();
   $('#playBtn').addEventListener('click', togglePlay);
+  window.SyncHelp && SyncHelp.initHelp();
   viz = new Visualizer($('#vizCanvas'), engine);
   viz.start();
 
