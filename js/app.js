@@ -1,8 +1,9 @@
 /* ============================================================
  * SyncState App — UI logic
- * Presets and programs are modeled on US 5,356,368 embodiments:
- *  - Mood Minder state presets
- *  - Sleep Processor 90-minute cycle program with wake-up ramp
+ * Presets and programs modeled on:
+ *  - US 5,356,368 (Monroe): Mood Minder presets, Sleep Processor
+ *  - US 5,954,630 (Masaki): Fm theta focus tone controls
+ *  - US 5,245,666 (Mikell): affirmation channel (affirmations.js)
  * ============================================================ */
 
 const engine = new BinauralEngine();
@@ -68,7 +69,10 @@ function loadSettings() {
       Object.assign(engine.state, {
         carrier: s.carrier ?? 200, beat: s.beat ?? 10, volume: s.volume ?? 0.6,
         toneLevel: s.toneLevel ?? 0.8, noiseLevel: s.noiseLevel ?? 0.15,
-        septon: s.septon ?? false, monaural: s.monaural ?? 0.35, balance: s.balance ?? 0
+        septon: s.septon ?? false, monaural: s.monaural ?? 0.35, balance: s.balance ?? 0,
+        fmOn: s.fmOn ?? false, fmCarrier: s.fmCarrier ?? 150, fmRate: s.fmRate ?? 6.5,
+        fmDepth: s.fmDepth ?? 0.8, fmLevel: s.fmLevel ?? 0.35, fmOneDivF: s.fmOneDivF ?? false,
+        affOn: s.affOn ?? false, affRatio: s.affRatio ?? 0.12
       });
       app.sessionMin = s.sessionMin ?? 20;
     }
@@ -160,6 +164,35 @@ function initControls() {
     saveSettings();
   });
 
+  /* ---- Masaki Focus Tone controls ---- */
+  $('#fmToggle').addEventListener('change', e => {
+    engine.setParam('fmOn', e.target.checked);
+    if (e.target.checked && !app.playing) togglePlay();
+    saveSettings();
+  });
+  $('#fmRateSlider').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    engine.setFmRate(v);
+    $('#fmRateVal').textContent = v.toFixed(1) + ' Hz';
+    saveSettings();
+  });
+  $('#fmDepthSlider').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    engine.setParam('fmDepth', v);
+    $('#fmDepthVal').textContent = Math.round(v * 100) + '%';
+    saveSettings();
+  });
+  $('#fmCarrierSlider').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    engine.setParam('fmCarrier', v);
+    $('#fmCarrierVal').textContent = v + ' Hz';
+    saveSettings();
+  });
+  $('#onefToggle').addEventListener('change', e => {
+    engine.setOneDivF(e.target.checked);
+    saveSettings();
+  });
+
   // timer chips
   $$('.time-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -187,6 +220,16 @@ function refreshControlValues() {
   $('#balanceSlider').value = s.balance;
   $('#balanceSliderVal').textContent = '0%';
   $('#septonToggle').checked = s.septon;
+  // Masaki channel
+  $('#fmToggle').checked = s.fmOn;
+  $('#fmRateSlider').value = s.fmRate;
+  $('#fmRateVal').textContent = (+s.fmRate).toFixed(1) + ' Hz';
+  $('#fmDepthSlider').value = s.fmDepth;
+  $('#fmDepthVal').textContent = Math.round(s.fmDepth * 100) + '%';
+  $('#fmCarrierSlider').value = s.fmCarrier;
+  $('#fmCarrierVal').textContent = s.fmCarrier + ' Hz';
+  $('#onefToggle').checked = s.fmOneDivF;
+  if (s.fmOneDivF) engine.setOneDivF(true);
   $$('.time-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.min) === app.sessionMin));
   updateBandReadout(s.beat);
 }
@@ -304,6 +347,7 @@ window.addEventListener('DOMContentLoaded', () => {
   refreshControlValues();
   $('#playBtn').addEventListener('click', togglePlay);
   window.SyncHelp && SyncHelp.initHelp();
+  window.AffirmUI && AffirmUI.affirmInit(engine, $, $$);
   viz = new Visualizer($('#vizCanvas'), engine);
   viz.start();
 
