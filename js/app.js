@@ -133,7 +133,7 @@ function updateStageUI(stage) {
   if (stage) {
     $('#nowPlaying').textContent = stage.label;
     const band = bandFor(stage.beat);
-    $('#bandChip').textContent = band.name + ' · ' + stage.beat + ' Hz';
+    $('#bandChip').textContent = band.name + ' · ' + stage.beat + '\u2009Hz';
     $('#bandChip').style.background = band.color + '33';
     $('#bandChip').style.color = band.color;
     updateBandReadout(stage.beat);
@@ -168,7 +168,7 @@ function bindSlider(id, key, fmt, transform = (v => v), inverse = (v => v)) {
     saveSettings();
   });
 }
-const fmtHz = v => (+v).toFixed(v < 10 ? 1 : 0) + ' Hz';
+const fmtHz = v => (+v).toFixed(v < 10 ? 1 : 0) + '\u2009Hz';
 const fmtPct = v => Math.round(v * 100) + '%';
 
 function initControls() {
@@ -193,7 +193,7 @@ function initControls() {
   $('#fmRateSlider').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
     engine.setFmRate(v);
-    $('#fmRateVal').textContent = v.toFixed(1) + ' Hz';
+    $('#fmRateVal').textContent = v.toFixed(1) + '\u2009Hz';
     saveSettings();
   });
   $('#fmDepthSlider').addEventListener('input', e => {
@@ -205,7 +205,7 @@ function initControls() {
   $('#fmCarrierSlider').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
     engine.setParam('fmCarrier', v);
-    $('#fmCarrierVal').textContent = v + ' Hz';
+    $('#fmCarrierVal').textContent = v + '\u2009Hz';
     saveSettings();
   });
   $('#onefToggle').addEventListener('change', e => {
@@ -246,11 +246,11 @@ function refreshControlValues() {
   // Masaki channel
   $('#fmToggle').checked = s.fmOn;
   $('#fmRateSlider').value = s.fmRate;
-  $('#fmRateVal').textContent = (+s.fmRate).toFixed(1) + ' Hz';
+  $('#fmRateVal').textContent = (+s.fmRate).toFixed(1) + '\u2009Hz';
   $('#fmDepthSlider').value = s.fmDepth;
   $('#fmDepthVal').textContent = Math.round(s.fmDepth * 100) + '%';
   $('#fmCarrierSlider').value = s.fmCarrier;
-  $('#fmCarrierVal').textContent = s.fmCarrier + ' Hz';
+  $('#fmCarrierVal').textContent = s.fmCarrier + '\u2009Hz';
   $('#onefToggle').checked = s.fmOneDivF;
   if (s.fmOneDivF) engine.setOneDivF(true);
   $$('.time-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.min) === app.sessionMin));
@@ -302,7 +302,7 @@ function applyPreset(p, el) {
   refreshControlValues();
   $('#nowPlaying').textContent = p.name;
   const band = bandFor(p.beat);
-  $('#bandChip').textContent = band.name + ' · ' + p.beat + ' Hz';
+  $('#bandChip').textContent = band.name + ' · ' + p.beat + '\u2009Hz';
   $('#bandChip').style.background = band.color + '33';
   $('#bandChip').style.color = band.color;
   // auto-start for seamless UX
@@ -382,7 +382,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // reflect stored beat on chip
   const band = bandFor(engine.state.beat);
-  $('#bandChip').textContent = band.name + ' · ' + engine.state.beat + ' Hz';
+  $('#bandChip').textContent = band.name + ' · ' + engine.state.beat + '\u2009Hz';
   $('#bandChip').style.background = band.color + '33';
   $('#bandChip').style.color = band.color;
 
