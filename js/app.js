@@ -1,9 +1,8 @@
 /* ============================================================
  * SyncState App — UI logic
- * Presets and programs modeled on:
- *  - US 5,356,368 (Monroe): Mood Minder presets, Sleep Processor
- *  - US 5,954,630 (Masaki): Fm theta focus tone controls
- *  - US 5,245,666 (Mikell): affirmation channel (affirmations.js)
+ * Presets and programs are modeled on US 5,356,368 embodiments:
+ *  - Mood Minder state presets
+ *  - Sleep Processor 90-minute cycle program with wake-up ramp
  * ============================================================ */
 
 const engine = new BinauralEngine();
@@ -134,7 +133,7 @@ function updateStageUI(stage) {
   if (stage) {
     $('#nowPlaying').textContent = stage.label;
     const band = bandFor(stage.beat);
-    $('#bandChip').textContent = band.name + ' · ' + stage.beat + ' Hz';
+    $('#bandChip').textContent = band.name + ' · ' + stage.beat + ' Hz';
     $('#bandChip').style.background = band.color + '33';
     $('#bandChip').style.color = band.color;
     updateBandReadout(stage.beat);
@@ -169,7 +168,7 @@ function bindSlider(id, key, fmt, transform = (v => v), inverse = (v => v)) {
     saveSettings();
   });
 }
-const fmtHz = v => (+v).toFixed(v < 10 ? 1 : 0) + ' Hz';
+const fmtHz = v => (+v).toFixed(v < 10 ? 1 : 0) + ' Hz';
 const fmtPct = v => Math.round(v * 100) + '%';
 
 function initControls() {
@@ -194,7 +193,7 @@ function initControls() {
   $('#fmRateSlider').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
     engine.setFmRate(v);
-    $('#fmRateVal').textContent = v.toFixed(1) + ' Hz';
+    $('#fmRateVal').textContent = v.toFixed(1) + ' Hz';
     saveSettings();
   });
   $('#fmDepthSlider').addEventListener('input', e => {
@@ -206,7 +205,7 @@ function initControls() {
   $('#fmCarrierSlider').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
     engine.setParam('fmCarrier', v);
-    $('#fmCarrierVal').textContent = v + ' Hz';
+    $('#fmCarrierVal').textContent = v + ' Hz';
     saveSettings();
   });
   $('#onefToggle').addEventListener('change', e => {
@@ -247,11 +246,11 @@ function refreshControlValues() {
   // Masaki channel
   $('#fmToggle').checked = s.fmOn;
   $('#fmRateSlider').value = s.fmRate;
-  $('#fmRateVal').textContent = (+s.fmRate).toFixed(1) + ' Hz';
+  $('#fmRateVal').textContent = (+s.fmRate).toFixed(1) + ' Hz';
   $('#fmDepthSlider').value = s.fmDepth;
   $('#fmDepthVal').textContent = Math.round(s.fmDepth * 100) + '%';
   $('#fmCarrierSlider').value = s.fmCarrier;
-  $('#fmCarrierVal').textContent = s.fmCarrier + ' Hz';
+  $('#fmCarrierVal').textContent = s.fmCarrier + ' Hz';
   $('#onefToggle').checked = s.fmOneDivF;
   if (s.fmOneDivF) engine.setOneDivF(true);
   $$('.time-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.min) === app.sessionMin));
@@ -303,7 +302,7 @@ function applyPreset(p, el) {
   refreshControlValues();
   $('#nowPlaying').textContent = p.name;
   const band = bandFor(p.beat);
-  $('#bandChip').textContent = band.name + ' · ' + p.beat + ' Hz';
+  $('#bandChip').textContent = band.name + ' · ' + p.beat + ' Hz';
   $('#bandChip').style.background = band.color + '33';
   $('#bandChip').style.color = band.color;
   // auto-start for seamless UX
@@ -355,7 +354,7 @@ function initTabs() {
   $$('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 }
 
-/* ---------- iOS audio unlock / resume ---------- */
+/* ---------- keep screen wake hint + iOS audio unlock ---------- */
 function initIOS() {
   // AudioContext must resume inside a user gesture on iOS — all entry
   // points route through togglePlay / applyPreset which are gesture-driven.
@@ -383,7 +382,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // reflect stored beat on chip
   const band = bandFor(engine.state.beat);
-  $('#bandChip').textContent = band.name + ' · ' + engine.state.beat + ' Hz';
+  $('#bandChip').textContent = band.name + ' · ' + engine.state.beat + ' Hz';
   $('#bandChip').style.background = band.color + '33';
   $('#bandChip').style.color = band.color;
 
