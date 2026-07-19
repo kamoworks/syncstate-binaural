@@ -19,7 +19,10 @@
 
   <header>
     <div class="logo">Sync<span>State</span></div>
-    <div id="bandChip">Alpha · 10 Hz</div>
+    <div class="header-right">
+      <div id="bandChip">Alpha · 10 Hz</div>
+      <button id="helpBtn" aria-label="Help and tour">?</button>
+    </div>
   </header>
 
   <!-- ============ SESSION TAB ============ -->
@@ -49,21 +52,23 @@
       <button class="time-chip" data-min="30">30m</button>
       <button class="time-chip" data-min="45">45m</button>
       <button class="time-chip" data-min="60">60m</button>
+      <button class="info-btn" data-info="timer" aria-label="Timer info">i</button>
     </div>
+    <p class="hp-hint">🎧 Stereo headphones required <button class="info-btn" data-info="headphones" aria-label="Why headphones">i</button></p>
 
     <div class="card">
       <h3>Frequency Calibration</h3>
       <div class="ctl">
-        <div class="ctl-head"><label>Beat Frequency</label><span id="beatSliderVal">10 Hz</span></div>
+        <div class="ctl-head"><label>Beat Frequency <button class="info-btn" data-info="beat" aria-label="Beat frequency info">i</button></label><span id="beatSliderVal">10 Hz</span></div>
         <input type="range" id="beatSlider" min="-0.3" max="1.65" step="0.005" value="1">
       </div>
       <div class="ctl">
-        <div class="ctl-head"><label>Carrier Tone</label><span id="carrierSliderVal">200 Hz</span></div>
+        <div class="ctl-head"><label>Carrier Tone <button class="info-btn" data-info="carrier" aria-label="Carrier tone info">i</button></label><span id="carrierSliderVal">200 Hz</span></div>
         <input type="range" id="carrierSlider" min="80" max="500" step="1" value="200">
       </div>
       <div class="toggle-row">
         <div>
-          <div class="t-label">Septōn Signal</div>
+          <div class="t-label">Septōn Signal <button class="info-btn" data-info="septon" aria-label="Septon info">i</button></div>
           <div class="t-sub">Simultaneous binaural + monaural beats (patent multi-beat mode)</div>
         </div>
         <label class="switch"><input type="checkbox" id="septonToggle"><span class="track"></span></label>
@@ -73,19 +78,19 @@
     <div class="card">
       <h3>Mix</h3>
       <div class="ctl">
-        <div class="ctl-head"><label>Master Volume</label><span id="volumeSliderVal">60%</span></div>
+        <div class="ctl-head"><label>Master Volume <button class="info-btn" data-info="volume" aria-label="Volume info">i</button></label><span id="volumeSliderVal">60%</span></div>
         <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.6">
       </div>
       <div class="ctl">
-        <div class="ctl-head"><label>Tone Level</label><span id="toneSliderVal">80%</span></div>
+        <div class="ctl-head"><label>Tone Level <button class="info-btn" data-info="tone" aria-label="Tone level info">i</button></label><span id="toneSliderVal">80%</span></div>
         <input type="range" id="toneSlider" min="0" max="1" step="0.01" value="0.8">
       </div>
       <div class="ctl">
-        <div class="ctl-head"><label>Pink Noise Bed</label><span id="noiseSliderVal">15%</span></div>
+        <div class="ctl-head"><label>Pink Noise Bed <button class="info-btn" data-info="noise" aria-label="Pink noise info">i</button></label><span id="noiseSliderVal">15%</span></div>
         <input type="range" id="noiseSlider" min="0" max="1" step="0.01" value="0.15">
       </div>
       <div class="ctl">
-        <div class="ctl-head"><label>Ear Balance</label><span id="balanceSliderVal">0%</span></div>
+        <div class="ctl-head"><label>Ear Balance <button class="info-btn" data-info="balance" aria-label="Ear balance info">i</button></label><span id="balanceSliderVal">0%</span></div>
         <input type="range" id="balanceSlider" min="-1" max="1" step="0.01" value="0">
       </div>
     </div>
@@ -93,6 +98,10 @@
 
   <!-- ============ STATES TAB ============ -->
   <section class="tab-panel" id="tab-states">
+    <div class="section-head">
+      <h2>Choose Your State</h2>
+      <button class="info-btn" data-info="presets" aria-label="Presets info">i</button>
+    </div>
     <div id="presetList"></div>
     <div class="card">
       <h3>How to use</h3>
@@ -110,7 +119,7 @@
       <div class="big">🌙</div>
       <p>The <b style="color:var(--text)">Sleep Processor</b> guides your brainwaves through
       natural 90-minute cycles — Alpha descent, Theta light sleep, Delta deep sleep,
-      Theta REM — then gently wakes you.</p>
+      Theta REM — then gently wakes you. <button class="info-btn" data-info="sleep" aria-label="Sleep program info">i</button></p>
     </div>
 
     <div class="card">
@@ -158,6 +167,7 @@
       <span><i style="background:#8ab4ff"></i> Left ear</span>
       <span><i style="background:#f0a6c0"></i> Right ear</span>
       <span><i style="background:#7c6cf0"></i> Beat envelope</span>
+      <span><button class="info-btn" data-info="visual" aria-label="Visualizer info">i</button></span>
     </div>
     <div class="card">
       <h3>What you're seeing</h3>
@@ -215,6 +225,7 @@
 
 <script src="js/audio-engine.js"></script>
 <script src="js/visualizer.js"></script>
+<script src="js/help.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
