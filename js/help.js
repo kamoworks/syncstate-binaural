@@ -66,6 +66,31 @@ const HELP_CONTENT = {
     body: 'The patent\'s flagship program. It guides your brainwaves through natural ~90-minute sleep cycles: Alpha settling → Theta descent → Delta deep sleep → Theta REM, repeating. The optional wake-up sequence gradually ramps back up through Alpha into Beta so you surface refreshed instead of groggy.',
     tips: ['4 cycles ≈ 6 hours, 5 cycles ≈ a full night', 'Use 1 cycle for a power nap', 'Keep your phone charging overnight', 'Volume low, noise bed slightly raised']
   },
+  fm: {
+    title: '🧠 Masaki Focus Tone',
+    body: 'From US Patent 5,954,630 (Hayashibara, 1999): a soft low tone amplitude-modulated at 6–7 Hz stimulates "frontal midline theta" (Fmθ) — the brainwave signature of absorbed attention measured in EEG studies. Unlike binaural beats, it works through speakers too, making it ideal for desk work and study.',
+    tips: ['6.5 Hz rate is the patent\'s Fm theta sweet spot', 'Keep modulation depth near 80% (the tested optimum)', 'Great paired with the Focus preset or used alone on speakers', '2–10 Hz also supports relaxed alpha states']
+  },
+  onef: {
+    title: '🌿 1/f Fluctuation',
+    body: 'Natural rhythms — heartbeat, breathing, flowing water — vary with "1/f" statistics: never perfectly regular, never random. The patent found that gently wandering the modulation rate and depth on these organic intervals significantly augments theta induction and prevents habituation.',
+    tips: ['Recommended for sessions over 15 minutes', 'The variation is subtle by design — you shouldn\'t notice it', 'Turn off if you prefer a perfectly steady tone']
+  },
+  affirm: {
+    title: '💬 Affirmations',
+    body: 'From US Patent 5,245,666 (Mikell, 1993): positive statements played at the edge of hearing, masked beneath your soundscape. The engine listens to your mix 33 times per second and continuously adjusts the message so it stays hidden but present — using the psychoacoustic "post-masking" effect. Full text of every affirmation is always shown — nothing hidden from you.',
+    tips: ['Record your own voice for the strongest personal effect', 'Keep it positive and present-tense: "I am…"', 'Honest science: expect subtle priming, not magic — pair with conscious effort']
+  },
+  liminal: {
+    title: '⚖ Delivery Level',
+    body: 'Calibrate like the patent\'s ratio dial: raise the slider until you can just barely make out the words, then back off slightly. "Liminal edge" = at the threshold of awareness; "Subliminal" = just below it. The engine then maintains that relationship automatically as your mix changes.',
+    tips: ['Subliminal works well for sleep programs', 'Liminal edge is best for focused daytime use', 'If you hear clear words, it\'s too high — if in doubt, go lower']
+  },
+  record: {
+    title: '🎙 Recording Affirmations',
+    body: 'Tap the red button and speak 2–3 short positive phrases clearly, then tap again to finish. Your recording loops seamlessly and is processed entirely on your device — nothing is uploaded anywhere.',
+    tips: ['Hold the phone 15–20 cm away, speak calmly', 'Example: "I am calm, capable and focused."', 'Re-record anytime — only the latest take is kept']
+  },
   visual: {
     title: '〰 Visualizer',
     body: 'Watch your entrainment signal live: the blue and pink waves are the tones going to each ear, the glowing envelope is the phantom beat your brain constructs, and the bars below are the real-time audio spectrum. The marker on the Delta→Gamma scale shows exactly where your current beat sits.',
@@ -120,6 +145,10 @@ const TOUR_STEPS = [
     text: 'Ready-made recipes for sleep, meditation, relaxation, focus and more. Tapping one starts playing instantly.' },
   { tab: 'sleep', sel: '#startSleep', title: 'The Sleep Processor',
     text: 'A full night program: guides you through natural 90-minute sleep cycles, then gently wakes you.' },
+  { tab: 'affirm', sel: '#affList', title: 'Affirmations 💬',
+    text: 'Positive statements masked beneath your mix at the edge of hearing — from US Patent 5,245,666. Record your own voice for the strongest effect.' },
+  { tab: 'session', sel: '#fmToggle', title: 'Focus Tone (New)',
+    text: 'The Masaki Fm-theta stimulus from US 5,954,630 — sharpens attention and works even on speakers.' },
   { tab: 'visual', sel: '#vizCanvas', title: 'Watch the Beat',
     text: 'See the two ear tones and the phantom beat your brain creates, live.' },
   { tab: 'session', sel: null, title: 'You\'re Ready 🎧',
@@ -204,7 +233,7 @@ class Tour {
   }
 
   end() {
-    localStorage.setItem('syncstate-tour', 'done');
+    localStorage.setItem('syncstate-tour-v2', 'done');
     this.overlay.classList.remove('open');
     setTimeout(() => this.overlay.remove(), 250);
   }
@@ -227,7 +256,7 @@ function initHelp() {
   if (helpBtn) helpBtn.addEventListener('click', () => new Tour(TOUR_STEPS).start());
 
   // first run: auto-start tour
-  if (!localStorage.getItem('syncstate-tour')) {
+  if (!localStorage.getItem('syncstate-tour-v2')) {
     setTimeout(() => new Tour(TOUR_STEPS).start(), 600);
   }
 }
