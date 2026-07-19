@@ -485,3 +485,53 @@ select {
   padding: 8px 2px 12px;
 }
 .section-head h2 { font-size: 17px; font-weight: 700; }
+
+/* ---------- affirmations ---------- */
+.meters { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.meter-row { display: flex; align-items: center; gap: 10px; }
+.meter-row span { font-size: 11px; font-weight: 700; color: var(--muted); width: 58px; text-transform: uppercase; letter-spacing: 0.5px; }
+.meter {
+  flex: 1; height: 8px; border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%; width: 0%;
+  border-radius: 4px;
+  transition: width .12s linear;
+}
+.meter-fill.cover { background: var(--accent2); }
+.meter-fill.msg { background: var(--accent); }
+.aff-status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--accent2);
+  text-align: center;
+  font-weight: 600;
+}
+.rec-row { display: flex; align-items: center; gap: 16px; }
+.rec-btn {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg2);
+  color: #f06c8a;
+  font-size: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid rgba(240, 108, 138, 0.4);
+  transition: all .2s;
+}
+.rec-btn.recording {
+  background: #f06c8a;
+  color: white;
+  animation: pulse 1.2s ease infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,108,138,0.5); }
+  50% { box-shadow: 0 0 0 14px rgba(240,108,138,0); }
+}
+.rec-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.aff-text { font-style: italic; }
+.aff-play-ind { font-size: 13px; color: var(--muted); }
+.aff-card.active .aff-play-ind { color: var(--accent2); }
