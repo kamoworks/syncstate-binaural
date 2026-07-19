@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>SyncState — Binaural Consciousness Studio</title>
-<meta name="description" content="Binaural beat brainwave entrainment app based on US Patent 5,356,368. Delta, Theta, Alpha, Beta, Gamma states with sleep-cycle programs.">
+<meta name="description" content="Brainwave entrainment app based on US Patents 5,356,368, 5,954,630 and 5,245,666. Binaural beats, Fm theta focus tone, masked affirmations, sleep-cycle programs.">
 <!-- iPhone / PWA -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -72,6 +72,36 @@
           <div class="t-sub">Simultaneous binaural + monaural beats (patent multi-beat mode)</div>
         </div>
         <label class="switch"><input type="checkbox" id="septonToggle"><span class="track"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Focus Tone · Fm Theta <button class="info-btn" data-info="fm" aria-label="Focus tone info">i</button></h3>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">Masaki Focus Tone</div>
+          <div class="t-sub">AM theta stimulus (US 5,954,630) — works on speakers too</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="fmToggle"><span class="track"></span></label>
+      </div>
+      <div class="ctl" style="margin-top:12px">
+        <div class="ctl-head"><label>Modulation Rate</label><span id="fmRateVal">6.5 Hz</span></div>
+        <input type="range" id="fmRateSlider" min="2" max="10" step="0.1" value="6.5">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Modulation Depth</label><span id="fmDepthVal">80%</span></div>
+        <input type="range" id="fmDepthSlider" min="0.3" max="1" step="0.01" value="0.8">
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><label>Carrier Tone</label><span id="fmCarrierVal">150 Hz</span></div>
+        <input type="range" id="fmCarrierSlider" min="120" max="200" step="1" value="150">
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">1/f Fluctuation <button class="info-btn" data-info="onef" aria-label="1/f fluctuation info">i</button></div>
+          <div class="t-sub">Organic bio-rhythm variation — augments induction</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="onefToggle"><span class="track"></span></label>
       </div>
     </div>
 
@@ -160,6 +190,47 @@
     </div>
   </section>
 
+  <!-- ============ AFFIRM TAB ============ -->
+  <section class="tab-panel" id="tab-affirm">
+    <div class="section-head">
+      <h2>Affirmations</h2>
+      <button class="info-btn" data-info="affirm" aria-label="Affirmations info">i</button>
+    </div>
+
+    <div class="card">
+      <h3>Subliminal Channel <button class="info-btn" data-info="liminal" aria-label="How masking works">i</button></h3>
+      <div class="toggle-row">
+        <div>
+          <div class="t-label">Enable Affirmations</div>
+          <div class="t-sub">Masked dynamically under your mix (US 5,245,666)</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="affToggle"><span class="track"></span></label>
+      </div>
+      <div class="ctl" style="margin-top:12px">
+        <div class="ctl-head"><label>Delivery Level</label><span id="affRatioVal">Subliminal</span></div>
+        <input type="range" id="affRatioSlider" min="0.02" max="0.4" step="0.01" value="0.12">
+      </div>
+      <div class="meters">
+        <div class="meter-row"><span>Cover</span><div class="meter"><div class="meter-fill cover" id="coverMeter"></div></div></div>
+        <div class="meter-row"><span>Message</span><div class="meter"><div class="meter-fill msg" id="msgMeter"></div></div></div>
+      </div>
+      <p id="affStatus" class="aff-status">Pick a library affirmation or record your own</p>
+    </div>
+
+    <div class="card">
+      <h3>Record Your Voice <button class="info-btn" data-info="record" aria-label="Recording info">i</button></h3>
+      <div class="rec-row">
+        <button id="affRecord" class="rec-btn" aria-label="Record affirmation">●</button>
+        <p class="rec-hint">Tap to record a short personal affirmation — it loops, masked, just like the patent's pocket device.</p>
+      </div>
+    </div>
+
+    <div class="card" style="padding-bottom:6px">
+      <h3>Library — full text always shown</h3>
+      <div id="affList"></div>
+    </div>
+  </section>
+
   <!-- ============ VISUALIZER TAB ============ -->
   <section class="tab-panel" id="tab-visual">
     <canvas id="vizCanvas"></canvas>
@@ -183,11 +254,13 @@
   <!-- ============ ABOUT TAB ============ -->
   <section class="tab-panel about" id="tab-about">
     <h4>The science</h4>
-    <p>SyncState implements the audio methods of US Patent 5,356,368 — Robert A. Monroe's
-    "Method of and Apparatus for Inducing Desired States of Consciousness" (1994, now expired
-    and in the public domain). Two pure tones, slightly different in each ear, cause the brain's
-    Frequency Following Response to synchronize neural activity to the difference frequency —
-    the binaural beat — encouraging hemispheric synchronization ("Hemi-Sync").</p>
+    <p>SyncState implements three expired, public-domain US patents as one layered system.
+    <b style="color:var(--text)">US 5,356,368</b> (Monroe, 1994): binaural Frequency Following Response —
+    two slightly different tones, one per ear, encourage the brain to synchronize to their difference.
+    <b style="color:var(--text)">US 5,954,630</b> (Masaki, 1999): a low tone amplitude-modulated at 2–10 Hz
+    stimulates frontal midline theta — the EEG signature of absorbed attention (works on speakers).
+    <b style="color:var(--text)">US 5,245,666</b> (Mikell, 1993): affirmations held at the edge of hearing
+    by real-time psychoacoustic masking.</p>
     <h4>Brainwave states</h4>
     <ul>
       <li><b>Delta</b> 0.5–4 Hz — deep sleep, healing</li>
@@ -198,17 +271,18 @@
     </ul>
     <h4>Patent features implemented</h4>
     <ul>
-      <li>Binaural FFR stimulus pairs with adjustable carrier</li>
-      <li>Septōn multi-beat mode (binaural + monaural + harmonic)</li>
-      <li>Phased pink-noise masking bed</li>
-      <li>Sleep Processor: staged 90-minute cycles + wake-up ramp</li>
-      <li>Mood Minder: one-tap state presets</li>
+      <li>Binaural FFR pairs + Septōn multi-beat mode ('368)</li>
+      <li>Sleep Processor 90-minute cycles + wake-up ramp ('368)</li>
+      <li>Fm theta AM tone, 80% depth optimum ('630)</li>
+      <li>1/f fluctuation augmentation ('630)</li>
+      <li>Dynamic post-masking affirmation channel ('666)</li>
+      <li>Voice recording + transparent library ('666)</li>
     </ul>
     <div class="patent">
-      US 5,356,368 · R. A. Monroe · filed 1991, issued 1994 · expired — public domain.
+      US 5,356,368 · US 5,954,630 · US 5,245,666 — all expired, public domain.
       Binaural beats discovered by H. W. Dove, 1839.
     </div>
-    <p class="warn">⚠ Use stereo headphones. Never use while driving or operating machinery.
+    <p class="warn">⚠ Use stereo headphones for binaural beats. Never use while driving or operating machinery.
     Not a medical device — consult a professional for clinical conditions. If you have epilepsy
     or a seizure disorder, consult your physician before use.</p>
   </section>
@@ -219,6 +293,7 @@
   <button class="tab-btn active" data-tab="session"><span class="ti">🎧</span>Session</button>
   <button class="tab-btn" data-tab="states"><span class="ti">🧠</span>States</button>
   <button class="tab-btn" data-tab="sleep"><span class="ti">🌙</span>Sleep</button>
+  <button class="tab-btn" data-tab="affirm"><span class="ti">💬</span>Affirm</button>
   <button class="tab-btn" data-tab="visual"><span class="ti">〰️</span>Visualize</button>
   <button class="tab-btn" data-tab="about"><span class="ti">ℹ️</span>About</button>
 </nav>
@@ -226,6 +301,7 @@
 <script src="js/audio-engine.js"></script>
 <script src="js/visualizer.js"></script>
 <script src="js/help.js"></script>
+<script src="js/affirmations.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
