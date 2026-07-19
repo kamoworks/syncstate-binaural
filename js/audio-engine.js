@@ -1,12 +1,10 @@
 /* ============================================================
  * SyncState Audio Engine
- * A modern Web Audio implementation of the methods described in
- * US Patent 5,356,368 (Monroe, "Method of and Apparatus for
- * Inducing Desired States of Consciousness"):
- *  - Binaural beat pairs (stereo FFR stimulus)
- *  - "Septon" mode: simultaneous binaural + monaural beats
- *  - Phased pink-noise masking bed
- *  - Programmed frequency progressions (Sleep Processor cycles)
+ * Modern Web Audio implementations of:
+ *  - US 5,356,368 (Monroe): binaural FFR beats, Septon mode,
+ *    phased pink-noise bed, Sleep Processor progressions
+ *  - US 5,954,630 (Masaki): Fm theta AM channel + 1/f fluctuation
+ *  - US 5,245,666 (Mikell): dynamically masked affirmation channel
  * ============================================================ */
 
 class BinauralEngine {
@@ -24,8 +22,26 @@ class BinauralEngine {
       noiseLevel: 0.15,  // pink noise 0..1
       septon: false,     // multi-beat mode
       monaural: 0.35,    // AM depth when septon on
-      balance: 0         // -1..1 ear balance
+      balance: 0,        // -1..1 ear balance
+
+      // Masaki US 5,954,630 — Fm theta AM channel
+      fmOn: false,
+      fmCarrier: 150,    // Hz (patent optimum 120–200)
+      fmRate: 6.5,       // Hz AM rate (2–10, Fm theta ~6–7)
+      fmDepth: 0.8,      // modulation depth (patent optimum 60–90%)
+      fmLevel: 0.35,     // channel level 0..1
+      fmOneDivF: false,  // 1/f fluctuation augmentation
+
+      // Mikell US 5,245,666 — masked affirmation channel
+      affOn: false,
+      affRatio: 0.12     // liminal message-to-cover ratio
     };
+
+    this._affBuffer = null;
+    this._affSrc = null;
+    this._coverEnv = 0;
+    this._affGainNow = 0;
+    this._fmFluctTimer = null;
 
     this._stageTimers = [];
     this.onTick = null;      // (remainingSeconds) => {}
@@ -115,6 +131,45 @@ class BinauralEngine {
     this.noiseSrc.connect(this.noiseGain);
     this.noiseGain.connect(this.master);
 
+    /* ---- Masaki US 5,954,630: Fm theta AM channel ----
+     * Low audio carrier (150 Hz opt.) amplitude-modulated by a very
+     * low frequency wave (2–10 Hz) at 30–100% depth (~80% optimum). */
+    this.fmOsc = ctx.createOscillator();
+    this.fmOsc.type = 'sine';
+    this.fmOsc.frequency.value = this.state.fmCarrier;
+    this.fmCarrierGain = ctx.createGain();
+    this.fmCarrierGain.gain.value = 0;
+    this.fmLFO = ctx.createOscillator();
+    this.fmLFO.type = 'sine';
+    this.fmLFO.frequency.value = this.state.fmRate;
+    this.fmAMDepth = ctx.createGain();
+    this.fmAMDepth.gain.value = 0;
+    this.fmLFO.connect(this.fmAMDepth);
+    this.fmAMDepth.connect(this.fmCarrierGain.gain);
+    this.fmOsc.connect(this.fmCarrierGain);
+    this.fmCarrierGain.connect(this.master);
+
+    /* ---- Mikell US 5,245,666: masked affirmation channel ----
+     * Message -> speech bandpass (400–4000 Hz) -> dynamic gain -> master.
+     * Cover envelope probed from tones+noise (internal cover embodiment). */
+    this.affBP = ctx.createBiquadFilter();
+    this.affBP.type = 'bandpass';
+    this.affBP.frequency.value = 1100;   // ~centre of 400–4000 band
+    this.affBP.Q.value = 0.5;
+    this.affGain = ctx.createGain();
+    this.affGain.gain.value = 0;
+    this.affBP.connect(this.affGain);
+    this.affGain.connect(this.master);
+
+    // cover probe: tones + noise (the masking cover), pre-master
+    this.coverProbe = ctx.createGain();
+    this.merger.connect(this.coverProbe);
+    this.noiseGain.connect(this.coverProbe);
+    this.coverAnalyser = ctx.createAnalyser();
+    this.coverAnalyser.fftSize = 512;
+    this.coverProbe.connect(this.coverAnalyser);
+    this._coverBuf = new Float32Array(this.coverAnalyser.fftSize);
+
     this._applyAll(0);
   }
 
@@ -176,6 +231,17 @@ class BinauralEngine {
     set(this.earGainL.gain, balL);
     set(this.earGainR.gain, balR);
 
+    // Masaki FM channel
+    set(this.fmOsc.frequency, s.fmCarrier);
+    set(this.fmLFO.frequency, s.fmRate);
+    if (s.fmOn) {
+      set(this.fmCarrierGain.gain, s.fmLevel * (1 - s.fmDepth * 0.5));
+      set(this.fmAMDepth.gain, s.fmLevel * s.fmDepth * 0.5);
+    } else {
+      set(this.fmCarrierGain.gain, 0);
+      set(this.fmAMDepth.gain, 0);
+    }
+
     if (this.running && !this.paused) {
       set(this.master.gain, s.volume * 0.5);
     }
@@ -196,6 +262,9 @@ class BinauralEngine {
       this.oscL2.start(); this.oscR2.start();
       this.amOsc.start();
       this.noiseSrc.start();
+      this.fmOsc.start();
+      this.fmLFO.start();
+      this._startEnvelopeFollower();
       this.running = true;
       this.paused = false;
     }
@@ -282,6 +351,113 @@ class BinauralEngine {
     this._stageTimers.forEach(clearTimeout);
     this._stageTimers = [];
     clearInterval(this._tickInterval);
+  }
+
+  /* ---------- Mikell US 5,245,666: dynamic masking engine ----------
+   * Envelope follower on the cover mix with patent timing:
+   * ~20 ms attack; release adapts — slow (post-masking) when the cover
+   * is high and stable, faster on sudden drops. Message gain tracks the
+   * user-calibrated liminal ratio across a wide dynamic range. */
+
+  _startEnvelopeFollower() {
+    if (this._envTimer) return;
+    let lastEnv = 0, stableTime = 0;
+    this._envTimer = setInterval(() => {
+      if (!this.ctx || !this.coverAnalyser) return;
+      this.coverAnalyser.getFloatTimeDomainData(this._coverBuf);
+      let sum = 0;
+      for (let i = 0; i < this._coverBuf.length; i++) sum += this._coverBuf[i] ** 2;
+      const rms = Math.sqrt(sum / this._coverBuf.length);
+      const level = Math.min(1, rms * 5);
+
+      // attack ~20 ms, release 60–150 ms (post-masking adaptive)
+      const dt = 0.03; // 30 ms tick
+      const stable = level > 0.25 && Math.abs(level - lastEnv) < 0.05;
+      stableTime = stable ? stableTime + dt : 0;
+      const releaseMs = stableTime > 1.5 ? 150 : 60; // sustained cover → slow release
+      const coeff = level > this._coverEnv
+        ? 1 - Math.exp(-dt / 0.02)
+        : 1 - Math.exp(-dt / (releaseMs / 1000));
+      this._coverEnv = this._coverEnv + coeff * (level - this._coverEnv);
+      lastEnv = level;
+
+      // message gain = liminal ratio tracked to cover envelope
+      const s = this.state;
+      let target = 0;
+      if (s.affOn && this._affBuffer && this.running && !this.paused) {
+        const floor = 0.015; // never fully silent while enabled
+        target = Math.min(0.5, Math.max(floor, s.affRatio * (0.2 + this._coverEnv * 1.6)));
+      }
+      this._affGainNow = target;
+      this.affGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.03);
+    }, 30);
+  }
+
+  async loadAffirmation(source) {
+    /* source: URL string or ArrayBuffer */
+    this._ensureContext();
+    try {
+      const ab = typeof source === 'string'
+        ? await (await fetch(source)).arrayBuffer()
+        : source;
+      const buf = await this.ctx.decodeAudioData(ab.slice(0));
+      this._affBuffer = buf;
+      this._restartAffirmationSource();
+      return true;
+    } catch (e) {
+      console.warn('Affirmation load failed', e);
+      return false;
+    }
+  }
+
+  _restartAffirmationSource() {
+    if (!this.ctx || !this._affBuffer) return;
+    if (this._affSrc) { try { this._affSrc.stop(); } catch (e) {} }
+    this._affSrc = this.ctx.createBufferSource();
+    this._affSrc.buffer = this._affBuffer;
+    this._affSrc.loop = true;
+    this._affSrc.connect(this.affBP);
+    this._affSrc.start();
+  }
+
+  setAffirmationOn(on) {
+    this.state.affOn = on;
+    if (on && this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+
+  getMeters() {
+    return { cover: this._coverEnv, message: this._affGainNow * 3 };
+  }
+
+  /* ---------- Masaki 1/f fluctuation augmentation ----------
+   * Slowly wanders the AM rate (±15%) and depth (±10%) on irregular,
+   * pink-noise-like intervals — per the patent's finding that 1/f
+   * variation of the stimulus augments Fm theta induction. */
+
+  setOneDivF(on) {
+    this.state.fmOneDivF = on;
+    clearTimeout(this._fmFluctTimer);
+    if (!on) return;
+    let wander = 0; // pink-ish random walk state
+    const step = () => {
+      if (!this.state.fmOneDivF || !this.ctx) return;
+      wander = wander * 0.7 + (Math.random() * 2 - 1) * 0.3;
+      const baseRate = this._fmBaseRate || this.state.fmRate;
+      const rate = Math.min(10, Math.max(2, baseRate * (1 + wander * 0.15)));
+      const depth = Math.min(1, Math.max(0.3, this.state.fmDepth * (1 + wander * 0.1)));
+      const t = this.ctx.currentTime;
+      this.fmLFO.frequency.setTargetAtTime(rate, t, 1.2);
+      this.fmAMDepth.gain.setTargetAtTime(
+        this.state.fmOn ? this.state.fmLevel * depth * 0.5 : 0, t, 1.2);
+      // irregular interval: 4–14 s, clustered like 1/f timing
+      this._fmFluctTimer = setTimeout(step, 4000 + Math.random() * Math.random() * 10000);
+    };
+    step();
+  }
+
+  setFmRate(rate) {
+    this._fmBaseRate = rate;
+    this.setParam('fmRate', rate);
   }
 
   getAnalyser() { return this.analyser; }
