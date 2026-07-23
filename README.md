@@ -40,16 +40,28 @@ Fully static — no build step:
   so it stays at the edge of hearing
 - **Liminal calibration slider** + live cover/message meters
 
+### Background playback (like a music app)
+- Audio is rendered offline into seamless WAV loops and played through a media
+  element — the one path iOS keeps alive when the screen locks or you switch apps
+- Lock-screen / Control Center play-pause via the Media Session API
+- Sleep Processor stages advance on a wall-clock schedule that survives backgrounding
+- Most reliable in a Safari tab. The Home Screen app works on most iOS versions,
+  but Apple has an open regression (iOS 26.0.x) that can break background audio in
+  installed web apps — if affected, use the site in Safari.
+- Architecture + primary-source research: `docs/SPEC-BACKGROUND-PLAYBACK-2026-07-23.md`
+
 ### UX
 - Guided first-run tour with spotlights (replay anytime via the **?** button)
-- 17 contextual info popups (bottom sheets) on every control
+- 18 contextual info popups (bottom sheets) on every control
 - Session timer with auto fade-out, settings persistence, PWA installable
 
 ## Files
 ```
 index.html                    app shell + all screens
 css/style.css                 mobile-first dark UI
-js/audio-engine.js            3-patent audio engine (binaural, FM-AM, masking)
+js/render-core.js             offline DSP renderer (seamless loops, WAV, FFT)
+js/playback.js                media transport (<audio> element + Media Session)
+js/audio-engine.js            3-patent engine facade (renders, schedules, plays)
 js/visualizer.js              waveform + spectrum + band visualization
 js/app.js                     UI logic, presets, sleep program, focus controls
 js/affirmations.js            recording, library, masking meters

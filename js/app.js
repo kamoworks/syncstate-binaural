@@ -156,6 +156,16 @@ engine.onEnded = () => {
   $('#timerReadout').textContent = '00:00';
 };
 engine.onStage = stage => updateStageUI(stage);
+engine.onStatus = msg => {
+  if (msg) $('#nowPlaying').textContent = msg;
+  else updatePlayUI();
+};
+// lock-screen controls / interruptions change playback outside the UI
+engine.onPlayState = playing => {
+  if (app.playing === playing) return;
+  app.playing = playing;
+  updatePlayUI();
+};
 
 /* ---------- controls binding ---------- */
 function bindSlider(id, key, fmt, transform = (v => v), inverse = (v => v)) {
@@ -354,14 +364,12 @@ function initTabs() {
   $$('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 }
 
-/* ---------- keep screen wake hint + iOS audio unlock ---------- */
+/* ---------- iOS recovery ---------- */
 function initIOS() {
-  // AudioContext must resume inside a user gesture on iOS — all entry
-  // points route through togglePlay / applyPreset which are gesture-driven.
+  // Playback runs through a media element and survives lock/background;
+  // on return, resume if iOS paused us and resync the wall-clock schedule.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && engine.ctx && engine.ctx.state === 'suspended' && app.playing) {
-      engine.ctx.resume();
-    }
+    if (!document.hidden && app.playing) engine.recoverPlayback();
   });
 }
 

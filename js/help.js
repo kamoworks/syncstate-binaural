@@ -11,6 +11,11 @@ const HELP_CONTENT = {
     body: 'Binaural beats only work with stereo headphones. Each ear receives a slightly different tone (e.g. 200 Hz left, 204 Hz right) and your brain constructs a third "phantom" beat at the difference (4 Hz). Speakers can\'t do this — the tones mix in the air before reaching your ears.',
     tips: ['Any wired or Bluetooth stereo headphones work', 'Keep volume comfortable — louder is not stronger', 'Effects typically build over 6–10 minutes']
   },
+  background: {
+    title: '🔒 Background Playback',
+    body: 'SyncState keeps playing when you lock your phone or switch apps — like a music app. Your session is rendered into real audio and played as media, with play/pause controls on the lock screen. Most reliable in a Safari tab; the Home Screen app also works on most iOS versions, but Apple has an open bug (iOS 26.0.x) that can break background audio in installed web apps — if that hits you, open the site in Safari instead.',
+    tips: ['Lock away — Sleep Processor stages keep advancing', 'Control playback from the lock screen or Control Center', 'Force-quitting the app/browser stops audio (true of any app)', 'Slider changes take a second to apply — the audio is re-rendered']
+  },
   play: {
     title: '▶ Starting a Session',
     body: 'Tap the big button to start your session. Audio fades in gently over 2.5 seconds. Tap again to stop — it fades out smoothly so there\'s no jarring cutoff.',
