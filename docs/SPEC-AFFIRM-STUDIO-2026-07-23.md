@@ -120,7 +120,35 @@ behavior, not a bug.
 5. **Script area** → foundation for an affirmation composer (user-extended
    text library) if the Affirm tab keeps growing.
 
-### 3.4 Verification
+### 3.4 Round-2 device findings + fixes (2026-07-23, same day)
+
+Device test confirmed the studio works end-to-end (record, discard,
+re-record, stop-to-cancel, list, rename, delete, reload-persistence). Three
+defects diagnosed:
+
+1. **Voice plays only in the right earphone.** iPhone mics frequently deliver
+   a stereo capture with one silent channel; solo playback is then one-eared,
+   and in the mix the voice arrives at half energy in one channel. Fix: every
+   take is **processed at save**: silent-channel-aware downmix to mono
+   (centered), leading/trailing silence trim, peak normalization to −1 dBFS
+   — stored as WAV. Existing takes are lazily migrated on load.
+2. **"Could not save" yet the takes persisted.** Storing a fresh
+   MediaRecorder Blob in IndexedDB is a known iOS quirk (spurious errors /
+   stale blob handles). Fix: store the processed take's **ArrayBuffer** (not
+   a Blob), verify-after-write before reporting failure, and include the
+   real error name in the message when it does fail.
+3. **Inaudible under the mix at "Clearly audible."** Combination of the
+   half-energy silent-channel capture and unnormalized low mic level (the
+   patent gain law then sits on a too-quiet source). Peak normalization
+   gives the gain law a consistent input, so the Delivery Level slider now
+   means the same thing for every take and the library alike (library files
+   run through the same processing on load). Message meter rescaled to show
+   gain honestly (was pegged at 100%).
+
+Bonus from the processing pipeline: silence-trimmed loops (no dead air gap
+each repeat), review-stage preview also plays the processed take (both ears).
+
+### 3.5 Verification
 
 - Local: syntax + harness (error-mapping table and IDB wrapper API as pure
   units where possible).

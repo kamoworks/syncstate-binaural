@@ -85,6 +85,52 @@ const RenderCore = (() => {
     }
   }
 
+  /* ---------- pure: voice take processing ----------
+   * iPhone mics often capture stereo with one silent channel (plays in one
+   * ear and at half energy in the mix). Every take runs through this at
+   * save/load: silent-channel-aware downmix → silence trim → peak normalize.
+   * Returns { pcm, sampleRate } or null if the take is effectively silent. */
+  function processVoicePcm(channels, sampleRate) {
+    if (!channels.length || !channels[0].length) return null;
+    // per-channel RMS (strided — this is a gate, not a measurement)
+    const rms = channels.map(ch => {
+      let s = 0, n = 0;
+      for (let i = 0; i < ch.length; i += 16) { s += ch[i] * ch[i]; n++; }
+      return Math.sqrt(s / Math.max(1, n));
+    });
+    const maxRms = Math.max(...rms);
+    let mono;
+    if (channels.length === 1) {
+      mono = Float32Array.from(channels[0]);
+    } else {
+      const live = channels.filter((c, i) => rms[i] > maxRms * 0.2);
+      mono = new Float32Array(channels[0].length);
+      for (let i = 0; i < mono.length; i++) {
+        let s = 0;
+        for (const c of live) s += c[i];
+        mono[i] = s / live.length;
+      }
+    }
+    // trim silence below ~-34 dB relative to peak, keep 120 ms padding
+    let peak = 0;
+    for (let i = 0; i < mono.length; i++) { const a = Math.abs(mono[i]); if (a > peak) peak = a; }
+    if (peak < 0.001) return null;                    // effectively silent
+    const gate = Math.max(0.003, peak * 0.02);
+    let first = -1, last = -1;
+    for (let i = 0; i < mono.length; i++) {
+      if (Math.abs(mono[i]) > gate) { if (first < 0) first = i; last = i; }
+    }
+    if (first < 0 || last - first < sampleRate * 0.25) return null;
+    const pad = Math.floor(sampleRate * 0.12);
+    const start = Math.max(0, first - pad);
+    const end = Math.min(mono.length, last + pad);
+    let out = mono.slice(start, end);
+    // peak normalize to -1 dBFS (gain capped so a whisper doesn't become hiss)
+    const gain = Math.min(0.9 / peak, 20);
+    for (let i = 0; i < out.length; i++) out[i] *= gain;
+    return { pcm: out, sampleRate };
+  }
+
   /* ---------- pure: radix-2 FFT magnitudes → AnalyserNode-style bytes ----------
    * Used by the visualizer shim: real input (Hann-windowed), returns
    * byte bins mapped like getByteFrequencyData (minDb -100, maxDb -30). */
@@ -376,7 +422,7 @@ const RenderCore = (() => {
   return {
     RENDER_RATE, SEAM_XFADE,
     snapLoopSeconds, encodeWav, applyEdgeFade, fftByteSpectrum,
-    renderSegment, envelopeBlob, affGainFor
+    renderSegment, envelopeBlob, affGainFor, processVoicePcm
   };
 })();
 

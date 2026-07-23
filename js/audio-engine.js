@@ -522,14 +522,35 @@ class BinauralEngine {
     this.ctx = new AC();        // decode-only; never connected to output
   }
 
-  async loadAffirmation(source) {
+  /* Decode any voice source and run it through the take-processing
+   * pipeline (silent-channel downmix, trim, normalize — see render-core).
+   * Returns { buffer (mono AudioBuffer), wavBlob, duration } or null if
+   * the audio is effectively silent. */
+  async processVoiceBlob(source) {
     this._ensureDecodeCtx();
+    const ab = source instanceof ArrayBuffer ? source : await source.arrayBuffer();
+    const raw = await this.ctx.decodeAudioData(ab.slice(0));
+    const chans = [];
+    for (let c = 0; c < raw.numberOfChannels; c++) chans.push(raw.getChannelData(c));
+    const p = RenderCore.processVoicePcm(chans, raw.sampleRate);
+    if (!p) return null;
+    const buf = this.ctx.createBuffer(1, p.pcm.length, p.sampleRate);
+    buf.getChannelData(0).set(p.pcm);
+    const wavBlob = RenderCore.encodeWav({
+      numberOfChannels: 1, length: p.pcm.length, sampleRate: p.sampleRate,
+      getChannelData: () => p.pcm
+    });
+    return { buffer: buf, wavBlob, duration: p.pcm.length / p.sampleRate };
+  }
+
+  async loadAffirmation(source) {
     try {
       const ab = typeof source === 'string'
         ? await (await fetch(source)).arrayBuffer()
         : source;
-      const buf = await this.ctx.decodeAudioData(ab.slice(0));
-      this._affBuffer = buf;
+      const p = await this.processVoiceBlob(ab);
+      if (!p) return false;
+      this._affBuffer = p.buffer;
       if (this.state.affOn) this._scheduleRebuild();
       return true;
     } catch (e) {
@@ -539,7 +560,8 @@ class BinauralEngine {
   }
 
   getMeters() {
-    return { cover: this._coverEnv, message: this._affGainNow * 3 };
+    // message = fraction of the gain law's ceiling (0.5) actually applied
+    return { cover: this._coverEnv, message: Math.min(1, this._affGainNow / 0.5) };
   }
 
   /* ---------- visualizer (public API unchanged) ----------

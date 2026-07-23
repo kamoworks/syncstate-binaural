@@ -15,6 +15,15 @@
 | A9 | Reload the page | Saved recordings still listed and playable |
 | A10 | Too-short take (tap stop immediately) | Friendly "too short" message, session resumes, no broken state |
 
+### Round 2 fixes (v5) — retest
+
+| # | Test | Expected |
+|---|------|----------|
+| A11 | Play a saved take (solo AND under the mix) with headphones | Voice in BOTH ears, centered (old takes auto-migrate on load) |
+| A12 | Select a take, Delivery Level at "Clearly audible", session playing | Voice plainly audible over the mix (takes are now level-normalized) |
+| A13 | Record + save a new take | No "Could not save" error; take listed and survives reload |
+| A14 | Listen to a saved take's loop | Starts near-instantly on the voice (leading silence trimmed) |
+
 ## Phase 1 review round (V3 Pillar 1) — run these first
 
 | # | Test | Expected |

@@ -59,6 +59,7 @@ const RecDB = {
     }));
   },
   all() { return this._tx('readonly', s => s.getAll()); },
+  get(id) { return this._tx('readonly', s => s.get(id)); },
   put(rec) { return this._tx('readwrite', s => s.put(rec)); },
   remove(id) { return this._tx('readwrite', s => s.delete(id)); }
 };
@@ -258,7 +259,7 @@ function affirmInit(engine, $, $$) {
     try { affirm.recorder.stop(); } catch (e) { finalizeTake(); }
   }
 
-  function finalizeTake() {
+  async function finalizeTake() {
     clearInterval(affirm.recTimer);
     stopLevelMeter();
     const dur = (Date.now() - affirm.startTime) / 1000;
@@ -274,8 +275,20 @@ function affirmInit(engine, $, $$) {
       recStatus('Too short — speak for a few seconds and try again.');
       return;
     }
-    affirm.pendingTake = { blob, mimeType: type, duration: dur };
-    $('#takeDur').textContent = fmtDur(dur);
+    // process NOW: silent-channel downmix (iPhone mics often record stereo
+    // with one dead channel → one-eared playback), trim, normalize. The
+    // review preview and the saved file are both the processed take.
+    recStatus('Processing your take…');
+    let processed = null;
+    try { processed = await engine.processVoiceBlob(blob); } catch (e) { processed = null; }
+    if (!processed) {
+      engine.resumeAfterCapture();
+      studioState('idle');
+      recStatus('That take came out silent — try again a little closer to the mic.');
+      return;
+    }
+    affirm.pendingTake = processed;   // { buffer, wavBlob, duration }
+    $('#takeDur').textContent = fmtDur(processed.duration);
     $('#takePlay').textContent = '▶';
     studioState('review');
     recStatus('Listen to your take, then save it or record again.');
@@ -318,7 +331,7 @@ function affirmInit(engine, $, $$) {
   $('#takePlay').addEventListener('click', () => {
     if (!affirm.pendingTake) return;
     if (!previewEl.paused) { stopPreview(); return; }
-    playPreview(affirm.pendingTake.blob, false); // session already held
+    playPreview(affirm.pendingTake.wavBlob, false); // session already held
     $('#takePlay').textContent = '⏹';
   });
 
@@ -344,16 +357,20 @@ function affirmInit(engine, $, $$) {
     const rec = {
       id: 'r' + Date.now(),
       name: defaultTakeName(),
-      blob: t.blob,
-      mimeType: t.mimeType,
+      // raw bytes, not a Blob: storing fresh MediaRecorder blobs in iOS
+      // IndexedDB throws spurious errors (round-2 device finding)
+      data: await t.wavBlob.arrayBuffer(),
+      mimeType: 'audio/wav',
       duration: t.duration,
       createdAt: Date.now()
     };
     try {
       await RecDB.put(rec);
+      const check = await RecDB.get(rec.id);   // trust the read, not the write
+      if (!check) throw new DOMException('write did not persist', 'UnknownError');
     } catch (e) {
       console.warn('recording save failed', e);
-      recStatus('Could not save on this device — the take will play until you reload.');
+      recStatus(`Saved for this session only — device storage failed (${(e && e.name) || 'unknown'}).`);
     }
     affirm.recordings.unshift(rec);
     renderRecordings();
@@ -362,8 +379,7 @@ function affirmInit(engine, $, $$) {
     // resume FIRST, then load: loadAffirmation's rebuild is skipped while
     // the session is paused, which would leave an old voice playing
     engine.resumeAfterCapture();
-    const ab = await rec.blob.arrayBuffer();
-    const ok = await engine.loadAffirmation(ab);
+    const ok = await engine.loadAffirmation(rec.data);
     if (ok) selectAffirmation('rec:' + rec.id, `“${rec.name}” saved — playing masked under your mix`);
     else recStatus('Saved, but it could not be decoded for playback.');
   });
@@ -385,6 +401,28 @@ function affirmInit(engine, $, $$) {
       affirm.recordings = [];
     }
     renderRecordings();
+    migrateOldTakes();
+  }
+
+  /* takes saved before the processing pipeline (raw AAC blobs, possibly
+   * one-eared and unnormalized) → process + re-store as mono WAV bytes */
+  async function migrateOldTakes() {
+    let changed = false;
+    for (const rec of affirm.recordings) {
+      if (rec.data && rec.mimeType === 'audio/wav') continue;
+      try {
+        const src = rec.data ? rec.data : await rec.blob.arrayBuffer();
+        const p = await engine.processVoiceBlob(src);
+        if (!p) continue;
+        rec.data = await p.wavBlob.arrayBuffer();
+        rec.mimeType = 'audio/wav';
+        rec.duration = p.duration;
+        delete rec.blob;
+        await RecDB.put(rec);
+        changed = true;
+      } catch (e) { /* keep the original take untouched */ }
+    }
+    if (changed) renderRecordings();
   }
 
   function renderRecordings() {
@@ -422,7 +460,7 @@ function affirmInit(engine, $, $$) {
     const key = 'rec:' + rec.id;
     if (affirm.activeId === key) { deselectAffirmation(); return; }
     updateAffStatus('Loading your voice…');
-    const ab = await rec.blob.arrayBuffer();
+    const ab = rec.data ? rec.data : await rec.blob.arrayBuffer();
     const ok = await engine.loadAffirmation(ab);
     if (!ok) { updateAffStatus('Could not decode this recording'); return; }
     selectAffirmation(key, `Playing “${rec.name}” — tap again to stop`);
@@ -436,7 +474,7 @@ function affirmInit(engine, $, $$) {
       }
       stopPreview();
       affirm.previewResume = engine.holdSession(); // solo means solo
-      playPreview(rec.blob, true);
+      playPreview(rec.data ? new Blob([rec.data], { type: rec.mimeType }) : rec.blob, true);
       btn.textContent = '⏹';
       previewEl.onended = () => { btn.textContent = '🎧'; endPreviewHold(); };
     } else if (act === 'rename') {
