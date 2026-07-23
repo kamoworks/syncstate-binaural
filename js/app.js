@@ -11,6 +11,7 @@ let viz = null;
 /* Presets (Mood Minder) + Sleep Processor program now live in the pure
  * program library (js/programs.js), unit-tested in Node. */
 const { PRESETS, buildSleepProgram } = window.SyncPrograms;
+const { fmtClock } = window.SyncFormat;
 
 /* waveform glyph: each preset gets its beat drawn as a wave —
  * slow wide sine for Delta, dense tight sine for Gamma. */
@@ -81,6 +82,7 @@ async function togglePlay() {
     app.playing = false;
     app.program = null;
     updateStageUI(null);
+    updateSleepView();
   }
   updatePlayUI();
 }
@@ -109,6 +111,29 @@ function updateStageUI(stage) {
   }
 }
 
+/* ---------- sleep tab running state ---------- */
+function updateSleepView() {
+  const running = !!app.program;
+  $('#sleepConfig').hidden = running;
+  $('#sleepRunning').hidden = !running;
+}
+
+function refreshSleepRunning(stage, remain) {
+  if (!app.program) return;
+  const st = stage || app.programStage;
+  if (st) {
+    const band = bandFor(st.beat);
+    $('#srStage').textContent = st.label;
+    $('#srStage').style.color = band.color;
+    if (st.index != null) $('#srMeta').textContent = `Stage ${st.index + 1} of ${app.program.length}`;
+  }
+  if (remain != null && app.sessionTotal) {
+    $('#srRemaining').textContent = fmtClock(remain);
+    const pct = Math.max(0, Math.min(100, (1 - remain / app.sessionTotal) * 100));
+    $('#srFill').style.width = pct + '%';
+  }
+}
+
 /* ---------- engine callbacks ---------- */
 const DIAL_C = 2 * Math.PI * 78; // dial ring circumference
 engine.onTick = remain => {
@@ -116,6 +141,7 @@ engine.onTick = remain => {
   $('#timerReadout').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   const prog = app.sessionTotal ? 1 - remain / app.sessionTotal : 0;
   $('#dialProg').style.strokeDashoffset = DIAL_C * (1 - prog);
+  refreshSleepRunning(null, remain);
 };
 engine.onEnded = () => {
   app.playing = false;
@@ -123,8 +149,9 @@ engine.onEnded = () => {
   updatePlayUI();
   updateStageUI(null);
   $('#timerReadout').textContent = '00:00';
+  updateSleepView();
 };
-engine.onStage = stage => updateStageUI(stage);
+engine.onStage = stage => { updateStageUI(stage); refreshSleepRunning(stage, null); };
 engine.onStatus = msg => {
   if (msg) $('#nowPlaying').textContent = msg;
   else updatePlayUI();
@@ -308,7 +335,17 @@ function initSleepUI() {
     }
     app.sessionTotal = stages.reduce((a, s) => a + s.minutes * 60, 0);
     engine.runProgram(stages);
-    showTab('session');
+    updateSleepView();
+    refreshSleepRunning({ ...stages[0], index: 0 }, app.sessionTotal);
+  });
+
+  $('#stopSleep').addEventListener('click', () => {
+    engine.stop(3);
+    app.playing = false;
+    app.program = null;
+    updatePlayUI();
+    updateStageUI(null);
+    updateSleepView();
   });
 
   // duration preview
@@ -369,4 +406,5 @@ window.addEventListener('DOMContentLoaded', () => {
   dial.style.strokeDashoffset = DIAL_C;
 
   updatePlayUI();
+  updateSleepView();
 });

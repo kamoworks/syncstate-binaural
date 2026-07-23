@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="SyncState">
 <meta name="theme-color" content="#0b0e1a">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <div id="app">
@@ -153,6 +153,7 @@
 
   <!-- ============ SLEEP TAB ============ -->
   <section class="tab-panel" id="tab-sleep">
+    <div id="sleepConfig">
     <div class="sleep-hero">
       <svg viewBox="0 0 48 48" fill="none" stroke="#8b7cf6" stroke-width="1.5" stroke-linecap="round">
         <path d="M38 28A16 16 0 1 1 20 10a13 13 0 0 0 18 18z"/>
@@ -186,6 +187,19 @@
 
     <div id="sleepDuration"></div>
     <button class="cta" id="startSleep">Begin Sleep Program</button>
+    </div><!-- /#sleepConfig -->
+
+    <div id="sleepRunning" hidden>
+      <div class="card">
+        <div class="sr-head">
+          <div class="sr-stage" id="srStage"></div>
+          <div class="sr-remaining" id="srRemaining"></div>
+        </div>
+        <div class="sr-bar"><div class="sr-bar-fill" id="srFill"></div></div>
+        <div class="sr-meta" id="srMeta"></div>
+      </div>
+      <button class="cta cta-stop" id="stopSleep">Stop Program</button>
+    </div>
 
     <div class="card">
       <h3>Cycle map</h3>
@@ -359,14 +373,15 @@
     About</button>
 </nav>
 
-<script src="js/render-core.js?v=6"></script>
-<script src="js/playback.js?v=6"></script>
-<script src="js/sequencer.js?v=6"></script>
-<script src="js/audio-engine.js?v=6"></script>
-<script src="js/visualizer.js?v=6"></script>
-<script src="js/help.js?v=6"></script>
-<script src="js/affirmations.js?v=6"></script>
-<script src="js/programs.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/render-core.js?v=7"></script>
+<script src="js/playback.js?v=7"></script>
+<script src="js/sequencer.js?v=7"></script>
+<script src="js/audio-engine.js?v=7"></script>
+<script src="js/visualizer.js?v=7"></script>
+<script src="js/help.js?v=7"></script>
+<script src="js/affirmations.js?v=7"></script>
+<script src="js/programs.js?v=7"></script>
+<script src="js/format.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>

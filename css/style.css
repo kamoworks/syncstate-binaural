@@ -475,6 +475,20 @@ select {
 .cycle-diagram { display: flex; gap: 4px; margin-top: 14px; }
 .cycle-seg { height: 6px; border-radius: 3px; flex: 1; opacity: 0.85; }
 
+/* ---------- sleep running state ---------- */
+#sleepConfig[hidden], #sleepRunning[hidden] { display: none; }
+#sleepRunning { display: flex; flex-direction: column; gap: 14px; }
+.sr-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sr-stage { font-size: 19px; font-weight: 650; color: var(--state); letter-spacing: 0.2px; }
+.sr-remaining { font-family: var(--mono); font-size: 21px; color: var(--silver); font-variant-numeric: tabular-nums; }
+.sr-bar { height: 6px; border-radius: 3px; background: var(--glass-2); overflow: hidden; margin-top: 14px; }
+.sr-bar-fill { height: 100%; width: 0%; border-radius: 3px; background: linear-gradient(90deg, var(--violet-deep), var(--state)); transition: width 0.9s linear; }
+.sr-meta { font-size: 12px; color: var(--muted); margin-top: 10px; }
+.cta-stop {
+  border-color: color-mix(in srgb, var(--silver-dim) 32%, transparent);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--silver-dim) 12%, transparent), color-mix(in srgb, var(--silver-dim) 5%, transparent));
+}
+
 /* ---------- affirmations ---------- */
 .meters { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .meter-row { display: flex; align-items: center; gap: 10px; }
