@@ -8,21 +8,9 @@
 const engine = new BinauralEngine();
 let viz = null;
 
-/* ---------- presets (Mood Minder embodiment) ---------- */
-const PRESETS = [
-  { id: 'deep-sleep', name: 'Deep Sleep', beat: 2,   carrier: 120, noise: 0.22,
-    desc: 'Delta 2 Hz — deep restorative sleep and healing.' },
-  { id: 'meditation', name: 'Meditation', beat: 6,   carrier: 160, noise: 0.18,
-    desc: 'Theta 6 Hz — deep meditation, imagery, creativity.' },
-  { id: 'relaxation', name: 'Relaxation', beat: 10,  carrier: 200, noise: 0.15,
-    desc: 'Alpha 10 Hz — calm, stress release, relaxed alertness.' },
-  { id: 'focus', name: 'Focus', beat: 16, carrier: 240, noise: 0.12,
-    desc: 'Beta 16 Hz — sustained attention and problem-solving.' },
-  { id: 'peak', name: 'Peak Awareness', beat: 40, carrier: 300, noise: 0.08,
-    desc: 'Gamma 40 Hz — high-level cognition and integration.' },
-  { id: 'concentrate', name: 'Concentration', beat: 12, carrier: 220, noise: 0.14, septon: true,
-    desc: 'SMR 12 Hz + Theta septon — study and learning mix.' }
-];
+/* Presets (Mood Minder) + Sleep Processor program now live in the pure
+ * program library (js/programs.js), unit-tested in Node. */
+const { PRESETS, buildSleepProgram } = window.SyncPrograms;
 
 /* waveform glyph: each preset gets its beat drawn as a wave —
  * slow wide sine for Delta, dense tight sine for Gamma. */
@@ -38,25 +26,6 @@ function waveGlyph(beat) {
   return `<svg class="preset-glyph" viewBox="0 0 ${W} ${H}" fill="none">
     <polyline points="${pts}" stroke="${band.color}" stroke-width="1.5" stroke-linecap="round"/>
   </svg>`;
-}
-
-/* ---------- Sleep Processor program (patent primary embodiment) ----------
- * Natural ~90-minute cycles: Alpha descent -> Theta -> Delta -> Theta(REM) */
-function buildSleepProgram(cycles = 4, wakeUp = true) {
-  const stages = [];
-  stages.push({ beat: 10, minutes: 5,  label: 'Settling · Alpha', carrier: 180 });
-  stages.push({ beat: 6,  minutes: 10, label: 'Descent · Theta', carrier: 150 });
-  for (let c = 0; c < cycles; c++) {
-    stages.push({ beat: 1.5, minutes: 45, label: `Deep Sleep · Delta (cycle ${c + 1})`, carrier: 110 });
-    stages.push({ beat: 5,   minutes: 25, label: `REM · Theta (cycle ${c + 1})`, carrier: 140 });
-    if (c < cycles - 1) stages.push({ beat: 3, minutes: 15, label: 'Transition · Delta-Theta', carrier: 120 });
-  }
-  if (wakeUp) {
-    stages.push({ beat: 8,  minutes: 5, label: 'Surfacing · Alpha', carrier: 180 });
-    stages.push({ beat: 12, minutes: 5, label: 'Awakening · Low Beta', carrier: 220 });
-    stages.push({ beat: 20, minutes: 5, label: 'Awake · Beta', carrier: 260 });
-  }
-  return stages;
 }
 
 /* ---------- state ---------- */

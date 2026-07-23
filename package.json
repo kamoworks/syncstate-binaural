@@ -1,0 +1,6 @@
+{
+  "name": "syncstate-binaural",
+  "private": true,
+  "version": "3.0.0",
+  "scripts": { "test": "node --test" }
+}

@@ -63,12 +63,9 @@ class BinauralEngine {
     this._rebuildTimer = null;
     this._stopping = false;
 
-    this._program = null;
-    this._sessionEnd = 0;
-    this._sessionLenSec = 0;
+    this._seq = new Sequencer();
     this._tickInterval = null;
     this._lastTickMs = 0;
-    this._fadeArmed = false;
 
     this.onTick = null;         // (remainingSeconds) => {}
     this.onStage = null;        // (stageInfo) => {}
@@ -126,9 +123,9 @@ class BinauralEngine {
    * iOS extrapolates from position+rate, so publishing on ticks + swaps is
    * plenty (research doc: RESEARCH-MEDIASESSION-BACKGROUND-2026-07-23.md). */
   _publishPosition() {
-    if (!this._sessionEnd || !this._sessionLenSec) return;
-    const remain = Math.max(0, (this._sessionEnd - Date.now()) / 1000);
-    this._t().setPosition(this._sessionLenSec - remain, this._sessionLenSec);
+    const r = this._seq.peek(Date.now());
+    if (!r) return;
+    this._t().setPosition(r.elapsed, r.total);
   }
 
   _remotePlay() {
@@ -140,9 +137,8 @@ class BinauralEngine {
   _status(msg) { this.onStatus && this.onStatus(msg); }
 
   _nowPlayingTitle() {
-    if (this._program && this._program.current >= 0) {
-      return this._program.stages[this._program.current].label;
-    }
+    const label = this._seq.currentLabel;
+    if (label) return label;
     const band = bandFor(this.state.beat);
     return `${band.name} · ${(+this.state.beat).toFixed(this.state.beat < 10 ? 1 : 0)} Hz`;
   }
@@ -199,7 +195,7 @@ class BinauralEngine {
   _scheduleRebuild() {
     // During a program the stage renders own the audio; parameter changes
     // are picked up at the next stage render ({...this.state} at render time).
-    if (this._program) return;
+    if (this._seq.isProgram) return;
     if (!this.running || this.paused || this._stopping) return;
     clearTimeout(this._rebuildTimer);
     this._rebuildTimer = setTimeout(() => {
@@ -298,7 +294,7 @@ class BinauralEngine {
                                 // session as system-level playback early
     t.unlock();                 // MUST run synchronously inside the user gesture
     t.setVolume(this.state.volume);
-    if (this.running && this.paused && this._loop && !this._program
+    if (this.running && this.paused && this._loop && !this._seq.isProgram
         && !this._stopping && t.hasSource()) {
       this.paused = false;      // plain pause → resume in place
       t.resume();
@@ -317,8 +313,7 @@ class BinauralEngine {
 
   stop(fadeSeconds = 3) {
     if (!this.running) return;
-    this._clearProgram();
-    this._sessionEnd = 0;
+    this._seq.reset();
     clearInterval(this._tickInterval);
     this._renderSeq++;          // cancel any in-flight render
     clearTimeout(this._rebuildTimer);
@@ -347,50 +342,54 @@ class BinauralEngine {
    * throttled wakeup self-corrects. */
 
   startSessionTimer(minutes) {
-    this._sessionEnd = Date.now() + minutes * 60000;
-    this._sessionLenSec = minutes * 60;
-    if (this._fadeArmed && this._loop && this.running && !this.paused) {
-      this._fadeArmed = false;  // timer extended mid-fade: back to the loop
+    // timer extended mid-fade (e.g. a longer chip tapped): cancel the fade,
+    // back to the loop — before load() clears the armed flag.
+    if (this._seq.wasFadeArmed && this._loop && this.running && !this.paused) {
       this._t().playLoop(this._loop.blob);
     }
-    this._fadeArmed = false;
+    this._seq.load({ stages: [], totalSec: minutes * 60, fadeOutTail: 8 }, Date.now());
+    this._startClock();
+  }
+
+  /* Common clock start for a plain session or a program: 1 s foreground
+   * interval (the transport's timeupdate also drives _schedulerTick). */
+  _startClock() {
     clearInterval(this._tickInterval);
     this._tickInterval = setInterval(() => this._schedulerTick(), 1000);
-    this.onTick && this.onTick(this._sessionLenSec);
+    this.onTick && this.onTick(Math.round(this._seq.schedule.totalSec));
   }
 
   _schedulerTick() {
     this._lastTickMs = Date.now();
     if (!this.running || this.paused || this._stopping) return;
-    const now = Date.now();
+    const r = this._seq.tick(Date.now());
+    if (!r) return;
 
-    if (this._sessionEnd) {
-      const remain = Math.max(0, Math.round((this._sessionEnd - now) / 1000));
-      this.onTick && this.onTick(remain);
-      this._publishPosition();
-      const fadeTail = this._program ? this._program.fadeOutTail : 8;
-      if (!this._fadeArmed && remain > 0 && remain <= fadeTail && this._loop) {
-        this._fadeArmed = true;
-        const t = this._t();
-        const pos = t.position() % this._loop.dur;
-        const blob = RenderCore.envelopeBlob(this._loop.buffer, pos, fadeTail, 'out', fadeTail);
-        t.playOnce(blob, () => this._finish());
-      } else if (remain <= 0 && !this._fadeArmed) {
-        this._finish();
-      }
+    this.onTick && this.onTick(Math.max(0, Math.round(r.remaining)));
+    this._publishPosition();
+
+    // fade-out / finish — decided by the sequencer on the whole-second remainder
+    if (r.armFade != null && this._loop) {
+      const t = this._t();
+      const pos = t.position() % this._loop.dur;
+      const blob = RenderCore.envelopeBlob(this._loop.buffer, pos, r.armFade, 'out', r.armFade);
+      t.playOnce(blob, () => this._finish());
+    } else if (r.finished) {
+      this._finish();
     }
 
-    if (this._program) this._programTick(now);
+    // stage transition (program only) — render + play the entered stage
+    if (r.entered) {
+      this._playStage(r).catch(e => console.warn('stage transition failed', e));
+    }
   }
 
   _finish() {
     clearInterval(this._tickInterval);
-    this._sessionEnd = 0;
-    this._clearProgram();
+    this._seq.reset();
     this._renderSeq++;          // cancel any in-flight render
     clearTimeout(this._rebuildTimer);
     this.paused = true;
-    this._fadeArmed = false;
     this._t().stop();
     this.onEnded && this.onEnded();
   }
@@ -403,26 +402,15 @@ class BinauralEngine {
    * schedule resyncs on the next tick or on unlock. */
 
   runProgram(stages, { fadeOutTail = 10 } = {}) {
-    this._clearProgram();
-    const t0 = Date.now();
-    let acc = 0;
-    const sched = stages.map((st, i) => {
-      const entry = {
-        ...st, index: i,
-        startMs: t0 + acc * 1000,
-        glideSec: Math.max(2, Math.min(st.minutes * 60, 45))
-      };
-      acc += st.minutes * 60;
-      return entry;
-    });
-    this._program = { stages: sched, current: -1, fadeOutTail };
+    this._seq.load({ stages, fadeOutTail }, Date.now());
     this._renderSeq++;          // cancel any in-flight non-program render
     clearTimeout(this._rebuildTimer);
     this.running = true;
     this.paused = false;
     this._stopping = false;
-    this.startSessionTimer(acc / 60);
-    this._enterStage(0, { fadeIn: 2.5 }).catch(e => console.warn('program start failed', e));
+    this._startClock();
+    this._playStage(this._seq.enter(0), { fadeIn: 2.5 })
+      .catch(e => console.warn('program start failed', e));
   }
 
   async _renderStageAssets(st, prev) {
@@ -453,16 +441,20 @@ class BinauralEngine {
     return st._rendering;
   }
 
-  async _enterStage(i, { fadeIn = 0 } = {}) {
-    const p = this._program;
-    if (!p || i >= p.stages.length) return;
-    const st = p.stages[i];
-    const prev = i > 0 ? p.stages[i - 1] : { beat: this.state.beat, carrier: this.state.carrier };
-    p.current = i;                       // claim before awaiting (no double entry)
+  /* Render + play the stage the sequencer just entered. The sequencer already
+   * claimed _current (in enter()/tick()) before this async work, so a late
+   * render can't double-enter. bundle = { entered, prev, next, release, index }. */
+  async _playStage(bundle, { fadeIn = 0 } = {}) {
+    if (!bundle || !bundle.entered) return;
+    const i = bundle.index;
+    const st = bundle.entered;
+    // glide source: the previous stage, or the live state for stage 0
+    const prev = bundle.prev || { beat: this.state.beat, carrier: this.state.carrier };
     if (i === 0) this._status('Preparing program…');
     await this._renderStageAssets(st, prev);
     this._status(null);
-    if (this._program !== p || p.current !== i || !this.running) return;
+    // superseded while rendering? (stopped, or the sequencer advanced past i)
+    if (!this.running || this._seq.currentIndex !== i) return;
 
     this.state.beat = st.beat;
     if (st.carrier) this.state.carrier = st.carrier;
@@ -480,7 +472,7 @@ class BinauralEngine {
     t.playThenLoop(glideBlob, st._loop.blob, {
       loopStart: 0,
       onLoop: () => {
-        if (this._program === p && p.current === i && st._loop) {
+        if (this._seq.currentIndex === i && st._loop) {
           this._vizPcm = st._loop.buffer.getChannelData(0);
           this._vizRate = st._loop.buffer.sampleRate;
         }
@@ -490,28 +482,10 @@ class BinauralEngine {
     this._updateNowPlaying();
 
     // prefetch next stage during this one (windows are minutes long)
-    const nxt = p.stages[i + 1];
-    if (nxt) this._renderStageAssets(nxt, st).catch(() => {});
+    if (bundle.next) this._renderStageAssets(bundle.next, st).catch(() => {});
     // free assets two stages back
-    const old = p.stages[i - 2];
+    const old = bundle.release;
     if (old) { old._glideBuf = null; old._loop = null; old._rendering = null; }
-  }
-
-  _programTick(now) {
-    const p = this._program;
-    if (!p || p.current < 0) return;
-    // find the stage we SHOULD be in (handles long background throttling)
-    let target = p.current;
-    for (let j = p.current + 1; j < p.stages.length; j++) {
-      if (now >= p.stages[j].startMs) target = j;
-    }
-    if (target > p.current) {
-      this._enterStage(target).catch(e => console.warn('stage transition failed', e));
-    }
-  }
-
-  _clearProgram() {
-    this._program = null;
   }
 
   /* ---------- Mikell affirmations (public API unchanged) ---------- */
