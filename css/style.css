@@ -520,6 +520,121 @@ select {
 .aff-play-ind { font-size: 12px; color: var(--muted); }
 .aff-card.active .aff-play-ind { color: var(--state); }
 
+/* ---------- Affirm Studio ---------- */
+.script-area {
+  width: 100%;
+  background: var(--bg-2);
+  color: var(--silver);
+  border: 1px solid var(--hairline-2);
+  border-radius: 14px;
+  padding: 12px 13px;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-style: italic;
+  line-height: 1.55;
+  resize: none;
+  margin-bottom: 14px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.script-area::placeholder { color: var(--muted); }
+.script-area:focus { outline: none; border-color: color-mix(in srgb, var(--violet) 55%, transparent); }
+
+.rec-live { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.rec-timer {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  color: #f06c8a;
+}
+.rec-limit {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #f0b64f;
+  letter-spacing: 0.5px;
+}
+.take-play { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 45%, transparent); }
+.take-label { font-size: 13px; font-weight: 600; color: var(--silver); }
+.review-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.chip-btn {
+  border: 1px solid var(--hairline-2);
+  background: var(--glass);
+  color: var(--silver-dim);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s var(--ease);
+}
+.chip-btn:active { transform: scale(0.96); }
+.chip-btn.save {
+  background: color-mix(in srgb, var(--violet) 25%, transparent);
+  border-color: color-mix(in srgb, var(--violet) 50%, transparent);
+  color: var(--silver);
+}
+
+.rec-item { cursor: pointer; }
+.rec-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.mini-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-2);
+  background: var(--glass);
+  color: var(--silver-dim);
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.2s var(--ease);
+}
+.mini-btn:active { border-color: var(--violet); color: var(--violet); transform: scale(1.1); }
+
+.persist-note {
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: #f0b64f;
+  line-height: 1.6;
+  background: rgba(240, 182, 79, 0.07);
+  border: 1px solid rgba(240, 182, 79, 0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.persist-note .chip-btn { flex-shrink: 0; }
+
+#snackbar {
+  position: fixed;
+  bottom: calc(84px + var(--safe-b));
+  left: 50%;
+  transform: translate(-50%, 20px);
+  max-width: 420px;
+  width: calc(100% - 48px);
+  background: linear-gradient(170deg, rgba(34,28,62,0.95), rgba(16,12,32,0.97));
+  border: 1px solid var(--hairline-2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 12.5px;
+  color: var(--silver);
+  z-index: 120;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s var(--ease);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+}
+#snackbar.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#snackUndo {
+  background: none; border: none;
+  color: var(--violet);
+  font-size: 12.5px; font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 6px;
+}
+
 /* ---------- visualizer ---------- */
 #vizCanvas {
   width: 100%;

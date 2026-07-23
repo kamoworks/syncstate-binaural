@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="SyncState">
 <meta name="theme-color" content="#0b0e1a">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 <div id="app">
@@ -230,10 +230,49 @@
 
     <div class="card">
       <h3>Record Your Voice <button class="info-btn" data-info="record" aria-label="Recording info">i</button></h3>
-      <div class="rec-row">
-        <button id="affRecord" class="rec-btn" aria-label="Record affirmation">●</button>
-        <p class="rec-hint">Tap to record a short personal affirmation — it loops, masked, just like the patent's pocket device.</p>
+      <textarea id="affScript" class="script-area" rows="2" maxlength="220"
+        placeholder="Write your affirmation here, then read it aloud while recording…"></textarea>
+      <div id="studioIdle">
+        <div class="rec-row">
+          <button id="affRecord" class="rec-btn" aria-label="Record affirmation">●</button>
+          <p class="rec-hint">Tap to record. If a session is playing it pauses while the mic is open and resumes when you're done.</p>
+        </div>
       </div>
+      <div id="studioLive" hidden>
+        <div class="rec-row">
+          <button id="affStop" class="rec-btn recording" aria-label="Stop recording">⏹</button>
+          <div class="rec-live">
+            <span id="recTimer" class="rec-timer">0:00</span>
+            <div class="meter"><div class="meter-fill msg" id="recMeter"></div></div>
+            <span id="recLimit" class="rec-limit" hidden>auto-stops at 1:30</span>
+          </div>
+        </div>
+      </div>
+      <div id="studioReview" hidden>
+        <div class="rec-row">
+          <button id="takePlay" class="rec-btn take-play" aria-label="Play your take">▶</button>
+          <div class="rec-live">
+            <span class="take-label">Your take · <span id="takeDur"></span></span>
+            <div class="review-actions">
+              <button id="takeSave" class="chip-btn save">Save</button>
+              <button id="takeAgain" class="chip-btn">Re-record</button>
+              <button id="takeDiscard" class="chip-btn">Discard</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p id="recStatus" class="aff-status"></p>
+    </div>
+
+    <div class="card">
+      <h3>My Recordings</h3>
+      <div id="recList"></div>
+      <p id="recEmpty" class="rec-hint" style="text-align:center">No recordings yet — your saved takes appear here, on this device.</p>
+      <p id="recPersistNote" class="persist-note" hidden>
+        Safari can clear recordings if you don't open SyncState for 7 days.
+        Add it to your Home Screen to keep them safe.
+        <button id="persistGotIt" class="chip-btn">Got it</button>
+      </p>
     </div>
 
     <div class="card" style="padding-bottom:6px">
@@ -297,6 +336,8 @@
 
 </div>
 
+<div id="snackbar"><span id="snackText"></span><button id="snackUndo">Undo</button></div>
+
 <nav id="tabbar">
   <button class="tab-btn active" data-tab="session">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M3 12h2l2-6 3 12 3-9 2 3h6"/></svg>
@@ -318,12 +359,12 @@
     About</button>
 </nav>
 
-<script src="js/render-core.js?v=3"></script>
-<script src="js/playback.js?v=3"></script>
-<script src="js/audio-engine.js?v=3"></script>
-<script src="js/visualizer.js?v=3"></script>
-<script src="js/help.js?v=3"></script>
-<script src="js/affirmations.js?v=3"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/render-core.js?v=4"></script>
+<script src="js/playback.js?v=4"></script>
+<script src="js/audio-engine.js?v=4"></script>
+<script src="js/visualizer.js?v=4"></script>
+<script src="js/help.js?v=4"></script>
+<script src="js/affirmations.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
 </body>
 </html>

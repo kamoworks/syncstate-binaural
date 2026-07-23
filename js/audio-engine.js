@@ -237,6 +237,59 @@ class BinauralEngine {
     this._scheduleRebuild();
   }
 
+  /* ---------- capture / preview choreography ----------
+   * ROOT CAUSE of the mic bug (W3C audio-session spec, verified in
+   * RESEARCH-IOS-MIC-AUDIOSESSION-2026-07-23.md): a mic track is ENDED
+   * unless audioSession.type is 'play-and-record' or 'auto'. Our
+   * background-audio fix pins 'playback', so getUserMedia died before the
+   * permission prompt. Capture must switch the type, and the session is
+   * paused meanwhile (iOS reroutes/ducks playing audio while the mic is
+   * open, sometimes persistently). */
+
+  _setAudioSessionType(t) {
+    try { if (navigator.audioSession) navigator.audioSession.type = t; } catch (e) {}
+  }
+
+  /* Pause the session for capture/solo-preview. Returns true if it was
+   * audible (pass that to releaseSession to resume). */
+  holdSession() {
+    const was = this.running && !this.paused
+      && this._transport && this._transport.shouldBePlaying;
+    if (was) {
+      this.paused = true;
+      this._transport.pause();
+      this.onPlayState && this.onPlayState(false);
+    }
+    return was;
+  }
+
+  releaseSession(resume) {
+    if (!resume) return;
+    this.paused = false;
+    this._transport && this._transport.resume();
+    this.onPlayState && this.onPlayState(true);
+    this._schedulerTick();
+  }
+
+  beginCapture() {
+    // don't lose a pending resume if re-record starts a second capture
+    this._captureResume = this._captureResume || this.holdSession();
+    this._setAudioSessionType('play-and-record');
+  }
+
+  /* Tracks stopped → immediately restore the playback session type.
+   * The session itself resumes later, via resumeAfterCapture(), once the
+   * user finishes reviewing the take. */
+  endCapture() {
+    this._setAudioSessionType('playback');
+  }
+
+  resumeAfterCapture() {
+    const resume = this._captureResume;
+    this._captureResume = false;
+    this.releaseSession(resume);
+  }
+
   /* ---------- transport (public API unchanged) ---------- */
 
   async start() {

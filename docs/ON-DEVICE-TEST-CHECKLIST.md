@@ -1,5 +1,20 @@
 # On-Device Test Checklist — Background Playback
 
+## Affirm Studio round (Phase 1.5) — run these first
+
+| # | Test | Expected |
+|---|------|----------|
+| A1 | Tap record with a session playing | Session pauses; Safari shows the mic permission prompt (first time); recording starts with timer + moving level meter |
+| A2 | Stop → review → Save | Take appears in My Recordings AND starts playing masked under the mix; session resumed |
+| A3 | Record a SECOND time (the old repeat-record bug) | Mic works again — no "Microphone access" error |
+| A4 | After recording ends, listen to the session | Output back at FULL quality — not quiet/tinny (the big iOS regression risk) |
+| A5 | Review → Play (solo), Re-record, Discard | All three work; Discard resumes the session |
+| A6 | My Recordings: tap a take / tap again | Selects under mix (✕ shows) / stops — same as library cards |
+| A7 | 🎧 solo preview on a saved take | Session pauses, voice plays alone, session resumes at the end |
+| A8 | ✎ rename, 🗑 delete → Undo | Rename sticks; delete shows Undo bar; Undo restores; letting it expire removes it |
+| A9 | Reload the page | Saved recordings still listed and playable |
+| A10 | Too-short take (tap stop immediately) | Friendly "too short" message, session resumes, no broken state |
+
 ## Phase 1 review round (V3 Pillar 1) — run these first
 
 | # | Test | Expected |

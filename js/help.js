@@ -93,8 +93,8 @@ const HELP_CONTENT = {
   },
   record: {
     title: '🎙 Recording Affirmations',
-    body: 'Tap the red button and speak 2–3 short positive phrases clearly, then tap again to finish. Your recording loops seamlessly and is processed entirely on your device — nothing is uploaded anywhere.',
-    tips: ['Hold the phone 15–20 cm away, speak calmly', 'Example: "I am calm, capable and focused."', 'Re-record anytime — only the latest take is kept']
+    body: 'Write your affirmation in the script box, tap record, and read it calmly — the level meter shows your voice is coming through. Tap stop, listen to the take, then save it or record again. Saved takes live in My Recordings on this device — nothing is uploaded anywhere. If a session is playing, it pauses while the mic is open and resumes after.',
+    tips: ['Hold the phone 15–20 cm away, speak calmly', 'Safari asks for microphone permission on your first recording', 'Keep takes you like — save several and switch between them', 'Add SyncState to your Home Screen so Safari never clears your recordings']
   },
   visual: {
     title: '〰 Visualizer',
