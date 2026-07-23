@@ -101,15 +101,34 @@ class BinauralEngine {
     });
     t.initMediaSession({
       onPlay: () => this._remotePlay(),
-      onPause: () => t.pause(),
+      onPause: () => {
+        t.pause();
+        // t.pause() clears shouldBePlaying first, so the element's pause
+        // event won't fire onExternalPause — sync the UI explicitly
+        if (!this._stopping) {
+          this.paused = true;
+          this.onPlayState && this.onPlayState(false);
+        }
+      },
       onStop: () => { this.stop(1); }
     });
     t.ontimeupdate = () => {
       const now = Date.now();
       if (now - this._lastTickMs >= 900) this._schedulerTick();
     };
+    // every handoff/src change resets iOS's Now Playing state — re-anchor
+    t.onswap = () => this._publishPosition();
     this._transport = t;
     return t;
+  }
+
+  /* Lock-screen timeline = SESSION progress (not the loop file's duration).
+   * iOS extrapolates from position+rate, so publishing on ticks + swaps is
+   * plenty (research doc: RESEARCH-MEDIASESSION-BACKGROUND-2026-07-23.md). */
+  _publishPosition() {
+    if (!this._sessionEnd || !this._sessionLenSec) return;
+    const remain = Math.max(0, (this._sessionEnd - Date.now()) / 1000);
+    this._t().setPosition(this._sessionLenSec - remain, this._sessionLenSec);
   }
 
   _remotePlay() {
@@ -135,12 +154,22 @@ class BinauralEngine {
 
   /* ---------- rendering ---------- */
 
+  /* Render-time state: when the platform honors element.volume (desktop/
+   * Android), render at reference level and set loudness live — better bit
+   * usage and volume changes cost nothing. iOS bakes volume (hardware
+   * buttons rule there anyway). */
+  _renderState(overrides) {
+    const rs = { ...this.state, ...(overrides || {}) };
+    if (this._t().volumeWritable) rs.volume = 1;
+    return rs;
+  }
+
   async _rebuild({ intro = false, position = 0 } = {}) {
     const seq = ++this._renderSeq;
     // Long loops: iOS's non-gapless wrap is hidden by the transport's
     // ping-pong handoff, and at 150 s any residual seam is rare anyway.
     const dur = RenderCore.snapLoopSeconds(150, this.state.beat);
-    const res = await RenderCore.renderSegment(this.state, {
+    const res = await RenderCore.renderSegment(this._renderState(), {
       seconds: dur, loop: true, affBuffer: this._affBuffer
     });
     if (seq !== this._renderSeq || !this.running || this.paused) return; // superseded
@@ -156,11 +185,11 @@ class BinauralEngine {
     this._vizRate = res.buffer.sampleRate;
     const t = this._t();
     if (intro) {
-      // fade-in is a pure-JS envelope over the loop's own head; the loop
-      // then picks up at the same offset, so content stays continuous
-      const introSec = Math.min(12, loop.dur);
-      const introBlob = RenderCore.envelopeBlob(loop.buffer, 0, introSec, 'in', 2.5);
-      t.playThenLoop(introBlob, loop.blob, { loopStart: introSec % loop.dur });
+      // fade-in is a pure-JS envelope over a FULL-length copy of the loop:
+      // its handoff then rides the standard 150 s seam machinery instead of
+      // creating an extra early seam (the v2 "cut ~10 s after leaving" bug)
+      const introBlob = RenderCore.envelopeBlob(loop.buffer, 0, loop.dur, 'in', 2.5);
+      t.playThenLoop(introBlob, loop.blob, { loopStart: 0 });
     } else {
       t.playLoop(loop.blob, position % loop.dur);
     }
@@ -183,6 +212,10 @@ class BinauralEngine {
 
   setParam(key, value) {
     this.state[key] = value;
+    if (key === 'volume' && this._t().volumeWritable) {
+      this._t().setVolume(value);   // live, no re-render needed
+      return;
+    }
     this._scheduleRebuild();
   }
 
@@ -195,11 +228,23 @@ class BinauralEngine {
     this._scheduleRebuild();
   }
 
+  /* Full stop for the affirmation channel: clears the loaded voice AND
+   * disables the layer (tapping the active library card calls this). */
+  clearAffirmation() {
+    this._affBuffer = null;
+    this.state.affOn = false;
+    this._affGainNow = 0;
+    this._scheduleRebuild();
+  }
+
   /* ---------- transport (public API unchanged) ---------- */
 
   async start() {
     const t = this._t();
+    this._updateNowPlaying();   // metadata BEFORE first play: marks the audio
+                                // session as system-level playback early
     t.unlock();                 // MUST run synchronously inside the user gesture
+    t.setVolume(this.state.volume);
     if (this.running && this.paused && this._loop && !this._program
         && !this._stopping && t.hasSource()) {
       this.paused = false;      // plain pause → resume in place
@@ -269,6 +314,7 @@ class BinauralEngine {
     if (this._sessionEnd) {
       const remain = Math.max(0, Math.round((this._sessionEnd - now) / 1000));
       this.onTick && this.onTick(remain);
+      this._publishPosition();
       const fadeTail = this._program ? this._program.fadeOutTail : 8;
       if (!this._fadeArmed && remain > 0 && remain <= fadeTail && this._loop) {
         this._fadeArmed = true;
@@ -330,7 +376,7 @@ class BinauralEngine {
     if (st._loop) return;
     if (!st._rendering) {
       st._rendering = (async () => {
-        const stState = { ...this.state, beat: st.beat, carrier: st.carrier || this.state.carrier };
+        const stState = this._renderState({ beat: st.beat, carrier: st.carrier || this.state.carrier });
         const g = await RenderCore.renderSegment(stState, {
           seconds: st.glideSec,
           glideFrom: { beat: prev.beat, carrier: prev.carrier || this.state.carrier },

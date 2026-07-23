@@ -5,14 +5,15 @@
  * suspended (docs/RESEARCH-IOS-BACKGROUND-AUDIO-2026-07-23.md).
  * Also owns the Media Session (lock-screen card + controls).
  *
- * v2: TWO audio elements in a ping-pong arrangement. On-device
- * testing (iPhone 13, iOS 26.3.1) showed native <audio loop>
- * drops ~1 s of audio at every wrap — the documented iOS gapless
- * regression. Instead, loops play as one-shots and the preloaded
- * standby element starts a fraction before the active one ends;
- * an 'ended' listener is the backstop when timers are throttled
- * in the background (worst case: a brief gap once per loop,
- * ~2.5 min, instead of every 20 s).
+ * v3 (SPEC-V3 Pillar 1): ONE seamless path for every change.
+ * Two <audio> elements; whatever needs to play next — a loop
+ * wrap, a re-rendered loop after a slider change, an intro or
+ * stage glide, even a stop fade — is prepped on the standby
+ * element and brought in with a short overlap while the old
+ * element retires. Loop wraps are driven by the media clock
+ * (timeupdate) with the 'ended' event as backstop; setTimeout is
+ * never trusted for timing (background throttling, see
+ * docs/RESEARCH-MEDIASESSION-BACKGROUND-2026-07-23.md).
  * ============================================================ */
 
 class MediaTransport {
@@ -23,17 +24,22 @@ class MediaTransport {
     this._standby = this.b;
 
     this._urls = new Set();
-    this._loopUrl = null;       // url both elements ping-pong over
-    this._loopMode = false;
-    this._handoffTimer = null;
-    this._onLoopStart = null;   // fired once, when the first handoff lands
-    this._onEnded = null;       // playOnce chaining
+    this._nextUrl = null;       // plays after active ends (null = one-shot)
+    this._nextStart = 0;        // offset for the FIRST entry into _nextUrl
+    this._onNext = null;        // fired once when _nextUrl takes over
+    this._onEnded = null;       // one-shot completion callback
+    this._handingOff = false;
+    this._retireTimer = null;
     this._unlocked = false;
-    this._swapping = false;
     this.shouldBePlaying = false;
+    this.onswap = null;         // active element changed (re-anchor Media Session)
     this.onExternalPause = onExternalPause || null;
     this.onExternalPlay = onExternalPlay || null;
     this.ontimeupdate = null;
+
+    // iOS ignores element.volume (hardware buttons only); detect once so the
+    // engine knows whether volume can be live or must be baked into renders.
+    this.volumeWritable = this._detectVolume();
 
     // The sanctioned lever for background/silent-switch playback
     // (W3C Audio Session API, Safari 16.4+).
@@ -57,11 +63,26 @@ class MediaTransport {
     return el;
   }
 
+  _detectVolume() {
+    try {
+      this.a.volume = 0.43;
+      const ok = Math.abs(this.a.volume - 0.43) < 0.01;
+      this.a.volume = 1;
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  setVolume(v) {
+    if (!this.volumeWritable) return;
+    this.a.volume = v;
+    this.b.volume = v;
+  }
+
   _wire(el) {
     el.addEventListener('ended', () => {
       if (el !== this._active) return;
-      if (this._loopMode) {
-        this._doHandoff();      // backstop: early-start timer didn't fire
+      if (this._nextUrl) {
+        this._handoff();        // backstop: media-clock trigger missed the seam
       } else {
         const fn = this._onEnded;
         this._onEnded = null;
@@ -70,21 +91,24 @@ class MediaTransport {
     });
     el.addEventListener('timeupdate', () => {
       if (el !== this._active) return;
-      if (this._loopMode) this._armHandoff();
+      if (this._nextUrl && !this._handingOff && el.duration && isFinite(el.duration)
+          && el.duration - el.currentTime <= 0.35) {
+        this._handoff();        // primary trigger: the media clock itself
+      }
       this.ontimeupdate && this.ontimeupdate();
     });
     // Interruptions (calls, Siri, other media apps) pause the element
     // directly — surface that so the UI stays truthful.
     el.addEventListener('pause', () => {
       if (el !== this._active) return;
-      if (this.shouldBePlaying && !el.ended && !this._swapping) {
+      if (this.shouldBePlaying && !el.ended && !this._handingOff) {
         this.onExternalPause && this.onExternalPause();
       }
       this._setSessionState('paused');
     });
     el.addEventListener('play', () => {
       if (el !== this._active) return;
-      if (!this._swapping) this.onExternalPlay && this.onExternalPlay();
+      this.onExternalPlay && this.onExternalPlay();
       this._setSessionState('playing');
     });
   }
@@ -110,7 +134,9 @@ class MediaTransport {
     }
   }
 
-  hasSource() { return !!this._loopUrl || !!this._active.src; }
+  hasSource() { return !!this._nextUrl || !!this._active.src; }
+
+  position() { return this._active.currentTime || 0; }
 
   _mkUrl(blob) {
     const url = URL.createObjectURL(blob);
@@ -118,132 +144,127 @@ class MediaTransport {
     return url;
   }
 
-  _revokeAllExcept(keep) {
+  _gc() {
+    const keep = [this._active.src, this._standby.src, this._nextUrl];
     for (const u of this._urls) {
       if (!keep.includes(u)) { URL.revokeObjectURL(u); this._urls.delete(u); }
     }
   }
 
-  _clearHandoff() {
-    clearTimeout(this._handoffTimer);
-    this._handoffTimer = null;
-  }
-
-  /* ---------- gapless loop machinery ---------- */
-
-  _prepStandby(url, startPos) {
-    const el = this._standby;
-    const seek = () => { try { el.currentTime = startPos; } catch (e) {} };
+  /* Load `url` into `el`, seek to `pos` once metadata allows, then `ready()`. */
+  _prepFor(el, url, pos, ready) {
+    const go = () => {
+      if (pos) { try { el.currentTime = pos; } catch (e) {} }
+      ready && ready();
+    };
     if (el.src !== url) {
       el.src = url;
       el.load();
-      el.addEventListener('loadedmetadata', seek, { once: true });
-    } else if (el.readyState >= 1) {
-      seek();
+      if (!pos) return go();    // play() queues until data arrives
+      el.addEventListener('loadedmetadata', go, { once: true });
+    } else if (el.readyState >= 1 || !pos) {
+      go();
     } else {
-      el.addEventListener('loadedmetadata', seek, { once: true });
+      el.addEventListener('loadedmetadata', go, { once: true });
     }
   }
 
-  _armHandoff() {
-    if (this._handoffTimer) return;
-    const el = this._active;
-    if (!el.duration || !isFinite(el.duration)) return;
-    const remain = el.duration - el.currentTime;
-    if (remain <= 1.5) {
-      // start the standby a fraction early: a ~150 ms overlap of the
-      // crossfaded seam is far less audible than iOS's native loop gap
-      this._handoffTimer = setTimeout(() => this._doHandoff(), Math.max(0, (remain - 0.15) * 1000));
-    }
+  _prepStandby(url, startPos) {
+    this._prepFor(this._standby, url, startPos, null);
+    if (!startPos) { try { this._standby.currentTime = 0; } catch (e) {} }
   }
 
-  _doHandoff() {
-    this._clearHandoff();
-    if (!this._loopMode || !this.shouldBePlaying) return;
+  /* Seam/next handoff: the prepped standby takes over with a short overlap. */
+  _handoff() {
+    if (this._handingOff || !this._nextUrl || !this.shouldBePlaying) return;
+    this._handingOff = true;
     const oldEl = this._active;
     const newEl = this._standby;
+    if (newEl.src !== this._nextUrl) newEl.src = this._nextUrl; // late-prep fallback
     const p = newEl.play();
     if (p && p.catch) p.catch(() => {});
     this._active = newEl;
     this._standby = oldEl;
-    const onLoop = this._onLoopStart;
-    this._onLoopStart = null;
-    onLoop && onLoop();
-    setTimeout(() => {
+    this._nextStart = 0;        // only the first entry uses a custom offset
+    const fired = this._onNext;
+    this._onNext = null;
+    fired && fired();
+    this.onswap && this.onswap();
+    clearTimeout(this._retireTimer);
+    this._retireTimer = setTimeout(() => {
       oldEl.pause();
-      this._prepStandby(this._loopUrl, 0);  // ready for the next wrap
-      this._revokeAllExcept([this._loopUrl]);
+      if (this._nextUrl) this._prepStandby(this._nextUrl, 0);
+      this._gc();
+      this._handingOff = false;
     }, 400);
   }
 
-  async _playActive(position) {
-    this._swapping = true;
-    const el = this._active;
-    try {
-      if (position) {
-        await new Promise(res => {
-          if (el.readyState >= 1) return res();
-          el.addEventListener('loadedmetadata', res, { once: true });
-        });
-        try { el.currentTime = position; } catch (e) {}
-      }
-      await el.play();
-    } catch (e) {
-      /* recovered by watchdog */
-    } finally {
-      this._swapping = false;
+  /* Core: play `url` — seamlessly handed off from whatever is audible now.
+   * nextUrl/nextStart/onNext queue what follows (loop wraps chain to self). */
+  _engage(url, { position = 0, nextUrl = null, nextStart = 0, onNext = null, onEnded = null } = {}) {
+    clearTimeout(this._retireTimer);
+    this._handingOff = false;
+    this._onEnded = onEnded;
+    this._onNext = onNext;
+    this._nextUrl = nextUrl;
+    this._nextStart = nextStart;
+    const wasAudible = this.shouldBePlaying && this._active.src && !this._active.paused;
+    this.shouldBePlaying = true;
+
+    if (wasAudible) {
+      const newEl = this._standby;
+      this._prepFor(newEl, url, position, () => {
+        if (!this.shouldBePlaying) return;   // stopped while loading
+        const oldEl = this._active;
+        const p = newEl.play();
+        if (p && p.catch) p.catch(() => {});
+        this._active = newEl;
+        this._standby = oldEl;
+        this.onswap && this.onswap();
+        this._retireTimer = setTimeout(() => {
+          oldEl.pause();
+          if (this._nextUrl) this._prepStandby(this._nextUrl, this._nextStart);
+          this._gc();
+        }, 350);
+      });
+    } else {
+      const el = this._active;
+      this._prepFor(el, url, position, () => {
+        if (!this.shouldBePlaying) return;
+        const p = el.play();
+        if (p && p.catch) p.catch(() => {});
+        if (this._nextUrl) this._prepStandby(this._nextUrl, this._nextStart);
+        this._gc();
+        this.onswap && this.onswap();
+      });
     }
   }
 
   /* ---------- public transport API ---------- */
 
-  /* Endless seamless loop of `blob`, starting at `position`. */
+  /* Endless seamless loop, starting at `position`. Seamless takeover if
+   * something is already playing (param changes, preset switches). */
   playLoop(blob, position = 0) {
-    this._clearHandoff();
-    this._onEnded = null;
-    this._loopMode = true;
-    this.shouldBePlaying = true;
-    this._loopUrl = this._mkUrl(blob);
-    this._active.loop = false;
-    this._active.src = this._loopUrl;
-    this._prepStandby(this._loopUrl, 0);
-    return this._playActive(position).then(() => this._revokeAllExcept([this._loopUrl]));
-  }
-
-  /* One-shot `firstBlob` (intro fade-in / stage glide) handed off
-   * seamlessly into an endless loop of `loopBlob`. `loopStart` is where
-   * the loop picks up after the first handoff (for content continuity). */
-  playThenLoop(firstBlob, loopBlob, { loopStart = 0, onLoop = null } = {}) {
-    this._clearHandoff();
-    this._onEnded = null;
-    this._loopMode = true;
-    this.shouldBePlaying = true;
-    const firstUrl = this._mkUrl(firstBlob);
-    this._loopUrl = this._mkUrl(loopBlob);
-    this._onLoopStart = onLoop;
-    this._active.loop = false;
-    this._active.src = firstUrl;
-    this._prepStandby(this._loopUrl, loopStart);
-    return this._playActive(0);
-  }
-
-  /* Plain one-shot (stop fade / timer fade) — no looping. */
-  playOnce(blob, onEnded) {
-    this._clearHandoff();
-    this._loopMode = false;
-    this._onLoopStart = null;
-    this._onEnded = onEnded || null;
-    this.shouldBePlaying = true;
     const url = this._mkUrl(blob);
-    this._standby.pause();
-    this._active.loop = false;
-    this._active.src = url;
-    return this._playActive(0).then(() => this._revokeAllExcept([url]));
+    this._engage(url, { position, nextUrl: url });
+  }
+
+  /* One-shot `firstBlob` (intro fade-in / stage glide) chained seamlessly
+   * into an endless loop of `loopBlob`, which enters at `loopStart`. */
+  playThenLoop(firstBlob, loopBlob, { loopStart = 0, onLoop = null } = {}) {
+    const firstUrl = this._mkUrl(firstBlob);
+    const loopUrl = this._mkUrl(loopBlob);
+    this._engage(firstUrl, { nextUrl: loopUrl, nextStart: loopStart, onNext: onLoop });
+  }
+
+  /* Plain one-shot (stop fade / timer fade) — blends in, then ends. */
+  playOnce(blob, onEnded) {
+    const url = this._mkUrl(blob);
+    this._engage(url, { onEnded });
   }
 
   pause() {
     this.shouldBePlaying = false;
-    this._clearHandoff();
     this._active.pause();
   }
 
@@ -256,17 +277,18 @@ class MediaTransport {
 
   stop() {
     this.shouldBePlaying = false;
-    this._loopMode = false;
+    this._nextUrl = null;
+    this._onNext = null;
     this._onEnded = null;
-    this._onLoopStart = null;
-    this._clearHandoff();
+    this._handingOff = false;
+    clearTimeout(this._retireTimer);
     for (const el of [this.a, this.b]) {
       el.pause();
       el.removeAttribute('src');
       el.load();
     }
-    this._loopUrl = null;
-    this._revokeAllExcept([]);
+    for (const u of this._urls) URL.revokeObjectURL(u);
+    this._urls.clear();
     this._setSessionState('none');
   }
 
@@ -276,8 +298,6 @@ class MediaTransport {
       if (p && p.catch) p.catch(() => {});
     }
   }
-
-  position() { return this._active.currentTime || 0; }
 
   /* ---------- Media Session: lock-screen card + controls ---------- */
 
@@ -298,6 +318,20 @@ class MediaTransport {
         artist: 'SyncState',
         album: subtitle || 'Binaural Consciousness Studio',
         artwork: [{ src: this._artwork(color || '#3ecfae'), sizes: '512x512', type: 'image/png' }]
+      });
+    } catch (e) {}
+  }
+
+  /* Session progress for the lock-screen timeline. Must be re-published
+   * after every src change/handoff (the engine hooks onswap for that). */
+  setPosition(elapsedSec, totalSec) {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    if (!isFinite(totalSec) || totalSec <= 0) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: totalSec,
+        position: Math.max(0, Math.min(totalSec, elapsedSec)),
+        playbackRate: 1
       });
     } catch (e) {}
   }

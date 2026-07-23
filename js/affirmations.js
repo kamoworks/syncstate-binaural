@@ -50,18 +50,26 @@ function affirmInit(engine, $, $$) {
       </span>
       <span class="aff-play-ind">▶</span>`;
     el.addEventListener('click', async () => {
+      if (affirm.activeId === a.id) {
+        // tapping the active card stops and deselects it completely
+        engine.clearAffirmation();
+        affirm.activeId = null;
+        $('#affToggle').checked = false;
+        refreshCardStates();
+        updateAffStatus('Stopped — tap any affirmation to start again');
+        return;
+      }
       updateAffStatus('Loading…');
       const ab = await fetchB64(a.file).catch(() => null);
       const ok = ab ? await engine.loadAffirmation(ab) : false;
       if (!ok) return;
       affirm.activeId = a.id;
-      $$('.aff-card').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
+      refreshCardStates();
       if (!engine.state.affOn) {
         engine.setAffirmationOn(true);
         $('#affToggle').checked = true;
       }
-      updateAffStatus(`Playing “${a.name}” — masked under your mix`);
+      updateAffStatus(`Playing “${a.name}” — tap the card again to stop`);
       if (!app.playing) togglePlay(); // need the cover mix running
       startMeters();
     });
@@ -84,7 +92,7 @@ function affirmInit(engine, $, $$) {
         const ok = await engine.loadAffirmation(ab);
         if (ok) {
           affirm.activeId = 'custom';
-          $$('.aff-card').forEach(c => c.classList.remove('active'));
+          refreshCardStates();
           $('#affToggle').checked = true;
           engine.setAffirmationOn(true);
           updateAffStatus('Your voice is loaded — masked under your mix');
@@ -110,6 +118,16 @@ function affirmInit(engine, $, $$) {
     recBtn.innerHTML = '●';
     affirm.recorder && affirm.recorder.stop();
     updateAffStatus('Processing…');
+  }
+
+  /* active card shows a stop glyph; inactive cards show play */
+  function refreshCardStates() {
+    $$('.aff-card').forEach(c => {
+      const active = c.dataset.aff === affirm.activeId;
+      c.classList.toggle('active', active);
+      const ind = c.querySelector('.aff-play-ind');
+      if (ind) ind.textContent = active ? '✕' : '▶';
+    });
   }
 
   /* ---------- enable toggle + calibration ---------- */

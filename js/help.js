@@ -44,7 +44,7 @@ const HELP_CONTENT = {
   volume: {
     title: '🔊 Master Volume',
     body: 'Overall loudness. Binaural beats work at low volumes — the effect is neurological, not acoustic. Set it just clearly audible and comfortable.',
-    tips: ['Lower is usually better, especially for sleep', 'Never use high volumes for long sessions']
+    tips: ['Lower is usually better, especially for sleep', 'Never use high volumes for long sessions', 'On iPhone, the volume buttons control loudness — they work even while the phone is locked']
   },
   tone: {
     title: '🎚 Tone Level',

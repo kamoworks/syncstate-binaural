@@ -1,5 +1,17 @@
 # On-Device Test Checklist — Background Playback
 
+## Phase 1 review round (V3 Pillar 1) — run these first
+
+| # | Test | Expected |
+|---|------|----------|
+| P1 | Move any slider / tap another preset while playing | NO audio cut — a brief ~0.3 s blend into the new sound |
+| P2 | Start a preset, leave the app immediately, listen 60 s | No cut ~10 s after leaving (the intro no longer ends early) |
+| P3 | Lock screen during a 20-min session | Timeline shows session progress (e.g. 3:12 / 20:00) and advances |
+| P4 | Pause from the lock screen, reopen the app | App shows paused state correctly; play resumes |
+| P5 | Affirm tab: tap "Calm", then tap it again | Second tap stops + deselects (✕ shows while active); toggle stays off |
+| P6 | Affirm on/off toggle while playing | Voice appears/disappears with NO audio cut |
+| P7 | Quiet-room listen at low volume, Deep Sleep preset | Tone sounds clean (dither) — no faint graininess/buzz under the tone |
+
 The rebuild is verified locally (syntax + 37-assertion unit harness), but the
 whole point of this feature lives on the iPhone. Run these on the live site:
 https://kamoworks.github.io/syncstate-binaural/

@@ -58,7 +58,11 @@ const RenderCore = (() => {
     for (let i = 0; i < len; i++) {
       for (let c = 0; c < nCh; c++) {
         const s = Math.max(-1, Math.min(1, chans[c][i]));
-        dv.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        // TPDF dither (±1 LSB): decorrelates 16-bit quantization error —
+        // audible on exactly this app's content (quiet pure tones)
+        let v = Math.round(s * 32767 + (Math.random() + Math.random() - 1));
+        if (v > 32767) v = 32767; else if (v < -32768) v = -32768;
+        dv.setInt16(off, v, true);
         off += 2;
       }
     }
