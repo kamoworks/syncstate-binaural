@@ -17,7 +17,8 @@ Safari tab is the recommended surface until Apple fixes it).
 | 5 | Let a 10-min session **end while locked** | 8 s fade-out, then silence; UI shows Ready on return |
 | 6 | Move a slider mid-session | Change applies after ~1 s with at most a small blip |
 | 7 | Start a **1-cycle Sleep Program**, lock, spot-check at ~5 and ~15 min | Stage has advanced (Settling → Descent → Deep Sleep); listen for the beat slowing |
-| 8 | Loop seam listen: play 2+ min on one preset | No click/gap every ~20 s |
+| 8 | Loop seam listen: play 6+ min on one preset, foreground | Continuous audio; at worst a subtle flutter every ~2.5 min (v2 ping-pong handoff) |
+| 8b | Same, but locked for 6+ min | Continuous; worst case one brief gap per ~2.5 min (ended-event backstop) |
 | 9 | Take a phone call (or Siri) mid-session | Audio pauses; play resumes from lock screen or app |
 | 10 | Affirmations: load "Calm", enable, listen | Voice faintly present under the mix at the set level |
 

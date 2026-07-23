@@ -56,7 +56,9 @@ class BinauralEngine {
 
     this._transport = null;
     this._loop = null;          // { buffer, blob, dur } current seamless loop
-    this._vizPcm = null;        // mono PCM of whatever segment is playing
+    this._vizPcm = null;        // PCM (left ch) of whatever segment is playing
+    this._vizRate = RenderCore.RENDER_RATE;
+    this._fftTmp = null;
     this._renderSeq = 0;
     this._rebuildTimer = null;
     this._stopping = false;
@@ -135,7 +137,9 @@ class BinauralEngine {
 
   async _rebuild({ intro = false, position = 0 } = {}) {
     const seq = ++this._renderSeq;
-    const dur = RenderCore.snapLoopSeconds(20, this.state.beat);
+    // Long loops: iOS's non-gapless wrap is hidden by the transport's
+    // ping-pong handoff, and at 150 s any residual seam is rare anyway.
+    const dur = RenderCore.snapLoopSeconds(150, this.state.beat);
     const res = await RenderCore.renderSegment(this.state, {
       seconds: dur, loop: true, affBuffer: this._affBuffer
     });
@@ -148,15 +152,15 @@ class BinauralEngine {
       dur: res.buffer.length / res.buffer.sampleRate
     };
     this._loop = loop;
-    this._vizPcm = RenderCore.monoMix(res.buffer);
+    this._vizPcm = res.buffer.getChannelData(0);
+    this._vizRate = res.buffer.sampleRate;
     const t = this._t();
     if (intro) {
-      // fade-in is a pure-JS envelope over the loop PCM: the one-shot ends
-      // exactly at the loop's crossfaded seam, so the chain is continuous
-      const introBlob = RenderCore.envelopeBlob(loop.buffer, 0, loop.dur, 'in', 2.5);
-      t.playOnce(introBlob, () => {
-        if (this._loop === loop && this.running) t.playLoop(loop.blob);
-      });
+      // fade-in is a pure-JS envelope over the loop's own head; the loop
+      // then picks up at the same offset, so content stays continuous
+      const introSec = Math.min(12, loop.dur);
+      const introBlob = RenderCore.envelopeBlob(loop.buffer, 0, introSec, 'in', 2.5);
+      t.playThenLoop(introBlob, loop.blob, { loopStart: introSec % loop.dur });
     } else {
       t.playLoop(loop.blob, position % loop.dur);
     }
@@ -333,7 +337,7 @@ class BinauralEngine {
           affBuffer: this._affBuffer
         });
         const l = await RenderCore.renderSegment(stState, {
-          seconds: RenderCore.snapLoopSeconds(20, st.beat),
+          seconds: RenderCore.snapLoopSeconds(150, st.beat),
           loop: true,
           affBuffer: this._affBuffer
         });
@@ -370,13 +374,17 @@ class BinauralEngine {
       RenderCore.applyEdgeFade(chans, st._glideBuf.sampleRate, fadeIn, 'in');
     }
     const glideBlob = RenderCore.encodeWav(st._glideBuf);
-    this._vizPcm = RenderCore.monoMix(st._glideBuf);
+    this._vizPcm = st._glideBuf.getChannelData(0);
+    this._vizRate = st._glideBuf.sampleRate;
 
     const t = this._t();
-    t.playOnce(glideBlob, () => {
-      if (this._program === p && p.current === i && this.running) {
-        t.playLoop(st._loop.blob);
-        this._vizPcm = RenderCore.monoMix(st._loop.buffer);
+    t.playThenLoop(glideBlob, st._loop.blob, {
+      loopStart: 0,
+      onLoop: () => {
+        if (this._program === p && p.current === i && st._loop) {
+          this._vizPcm = st._loop.buffer.getChannelData(0);
+          this._vizRate = st._loop.buffer.sampleRate;
+        }
       }
     });
     this.onStage && this.onStage({ index: i, beat: st.beat, carrier: st.carrier, minutes: st.minutes, label: st.label });
@@ -443,8 +451,17 @@ class BinauralEngine {
 
   _fillSpectrum(arr) {
     if (!this._vizPcm || !this.running || this.paused) { arr.fill(0); return; }
-    const pos = Math.floor(this._t().position() * RenderCore.SAMPLE_RATE);
-    RenderCore.fftByteSpectrum(this._vizPcm, pos, 2048, arr, true);
+    const pos = Math.floor(this._t().position() * this._vizRate);
+    if (!this._fftTmp) this._fftTmp = new Uint8Array(1024);
+    RenderCore.fftByteSpectrum(this._vizPcm, pos, 2048, this._fftTmp, false);
+    // remap: PCM is rendered at 24 kHz, but the visualizer's bin layout
+    // assumes AnalyserNode over 44.1 kHz — present bins on that scale
+    const ratio = 44100 / this._vizRate;
+    for (let k = 0; k < arr.length; k++) {
+      const src = Math.round(k * ratio);
+      const v = src < this._fftTmp.length ? this._fftTmp[src] : 0;
+      arr[k] = Math.round(arr[k] * 0.8 + v * 0.2);
+    }
   }
 }
 

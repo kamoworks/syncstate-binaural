@@ -12,7 +12,10 @@
 
 const RenderCore = (() => {
 
-  const SAMPLE_RATE = 44100;
+  // 24 kHz: highest content is the ~4 kHz affirmation band edge and the pink
+  // noise bed — Nyquist at 12 kHz covers it, and long loops (v2 uses ~150 s to
+  // make iOS's non-gapless wrap rare) halve their memory/render cost vs 44.1k.
+  const RENDER_RATE = 24000;
   const SEAM_XFADE = 0.25;   // s, tail-into-head crossfade baked into loops
 
   function newOfflineCtx(channels, length, rate) {
@@ -303,7 +306,7 @@ const RenderCore = (() => {
     const coverEnv = await measureCoverEnv(state);
     const affGain = opts.affBuffer ? affGainFor(state, coverEnv) : 0;
 
-    const ctx = newOfflineCtx(2, Math.ceil((seconds + xf) * SAMPLE_RATE), SAMPLE_RATE);
+    const ctx = newOfflineCtx(2, Math.ceil((seconds + xf) * RENDER_RATE), RENDER_RATE);
     scheduleGraph(ctx, state, seconds + xf, {
       glideFrom: opts.glideFrom,
       affBuffer: opts.affBuffer && state.affOn ? await transferBuffer(ctx, opts.affBuffer) : null,
@@ -313,9 +316,9 @@ const RenderCore = (() => {
 
     let out = raw;
     if (opts.loop) {
-      const N = Math.floor(seconds * SAMPLE_RATE);
+      const N = Math.floor(seconds * RENDER_RATE);
       const Xn = raw.length - N;
-      out = ctx.createBuffer(2, N, SAMPLE_RATE);
+      out = ctx.createBuffer(2, N, RENDER_RATE);
       for (let c = 0; c < 2; c++) {
         const src = raw.getChannelData(c);
         const dst = out.getChannelData(c);
@@ -366,18 +369,10 @@ const RenderCore = (() => {
     });
   }
 
-  function monoMix(buffer) {
-    const L = buffer.getChannelData(0);
-    const R = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : L;
-    const out = new Float32Array(buffer.length);
-    for (let i = 0; i < buffer.length; i++) out[i] = (L[i] + R[i]) / 2;
-    return out;
-  }
-
   return {
-    SAMPLE_RATE, SEAM_XFADE,
+    RENDER_RATE, SEAM_XFADE,
     snapLoopSeconds, encodeWav, applyEdgeFade, fftByteSpectrum,
-    renderSegment, envelopeBlob, monoMix, affGainFor
+    renderSegment, envelopeBlob, affGainFor
   };
 })();
 

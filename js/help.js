@@ -207,6 +207,10 @@ class Tour {
 
       const target = s.sel ? document.querySelector(s.sel) : null;
       if (target) {
+        // targets low on the page (e.g. the Focus Tone toggle) sit below the
+        // fold — bring them into the viewport before measuring, or the card
+        // lands off-screen with Skip/Next unreachable
+        target.scrollIntoView({ block: 'center', behavior: 'instant' });
         const r = target.getBoundingClientRect();
         const pad = 10;
         this.spot.style.display = 'block';
@@ -215,11 +219,13 @@ class Tour {
         this.spot.style.width = (r.width + pad * 2) + 'px';
         this.spot.style.height = (r.height + pad * 2) + 'px';
 
-        // position card above or below the spotlight
+        // position card above or below the spotlight, clamped into view
         const cardH = 210;
         const below = r.bottom + 18;
         const above = r.top - cardH - 18;
-        this.card.style.top = (below + cardH < window.innerHeight - 90 ? below : Math.max(16, above)) + 'px';
+        let top = below + cardH < window.innerHeight - 90 ? below : Math.max(16, above);
+        top = Math.max(16, Math.min(top, window.innerHeight - cardH - 24));
+        this.card.style.top = top + 'px';
         this.card.style.bottom = 'auto';
       } else {
         this.spot.style.display = 'none';

@@ -110,6 +110,32 @@ the steady state overnight is native `loop=true` playback needing no JS at all).
 - No live Web Audio "preview path" in the foreground: one audio path, no
   compensating swap layers (Rigor Gate).
 
+## v2 addendum (same day, after on-device testing)
+
+On-device (iPhone 13, iOS 26.3.1, Safari tab): background playback and the
+lock-screen card WORKED, but audio dropped ~1 s at every loop wrap. The lock
+screen showed the session as a finite 20 s track (0:16 / −0:04) restarting —
+iOS's native `<audio loop>` is not gapless on WAV blobs, exactly the regression
+research doc 2 flagged. v1 under-weighted it. Fix, using both documented
+workarounds together:
+
+1. **Loops are now ~150 s** (seams 7× rarer) and rendered at **24 kHz** — the
+   content tops out around the 4 kHz affirmation band edge, and the lower rate
+   halves memory/render cost of the long loops.
+2. **Dual-element ping-pong in MediaTransport**: loops play as one-shots on two
+   alternating pre-loaded `<audio>` elements; the standby starts ~150 ms before
+   the active ends (timeupdate-armed timer), with the `ended` event as backstop
+   when background throttling delays the timer. Worst case is a brief gap once
+   per 2.5 min in the background; foreground should be seamless. Intro→loop and
+   Sleep-Processor glide→loop transitions ride the same handoff
+   (`playThenLoop`), so those seams are gone too.
+3. Visualizer FFT remaps 24 kHz bins onto the 44.1 kHz bin layout the canvas
+   code assumes.
+
+Also fixed from device testing: tour step 9 (Focus Tone) positioned its card
+below the viewport with Skip/Next unreachable — targets are now scrolled into
+view before measuring and the card top is clamped into the viewport.
+
 ## Verification
 
 - Local (this machine): `node --check` on all JS; Node harness for the pure parts —
